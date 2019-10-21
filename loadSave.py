@@ -34,13 +34,13 @@ converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF
 
 if optimize_lite_model:
   converter.optimizations = [tf.lite.Optimize.DEFAULT]
-  # if representative_dataset:  # This is optional, see above.
-  #   converter.representative_dataset = representative_dataset
-  # if full_integer_quantization:
-  #   converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-  #   converter.inference_input_type = tf.uint8
-  #   converter.inference_output_type = tf.uint8
-  #   lite_model_file = "./lite_model_quant_uint8.tflite"
+  if representative_dataset:  # This is optional, see above.
+    converter.representative_dataset = representative_dataset
+  if full_integer_quantization:
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    converter.inference_input_type = tf.uint8
+    converter.inference_output_type = tf.uint8
+    lite_model_file = "./lite_model_quant_uint8.tflite"
 lite_model_content = converter.convert()
 
 import pdb;pdb.set_trace()

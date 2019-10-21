@@ -8,10 +8,10 @@ import matplotlib.pylab as plt
 from matplotlib.patches import Polygon
 import itertools
 import os 
-from coord import CoordinateChannel2D
 from tensorflow.keras import layers
 import os
 from iou import getIOU
+from tensorflow.keras import backend as K
 
 dataset_directory = './card_synthetic_dataset'
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
@@ -89,8 +89,41 @@ base_net.trainable = True #@param {type:"boolean"}
 inp = tf.keras.Input(shape = (224, 224, 3))
 encoder = base_net(inp)
 
-# TODO: 
-encoder = CoordinateChannel2D()(encoder)
+input_shape = K.shape(encoder)
+batch_shape, dim1, dim2, channels = input_shape
+
+A = tf.stack([batch_shape, dim2])
+xx_ones = tf.ones(A, dtype='int32')
+xx_ones = K.expand_dims(xx_ones, axis=-1)
+
+xx_range = K.tile(K.expand_dims(K.arange(0, dim1), axis=0),
+                    tf.stack([batch_shape, 1]))
+xx_range = K.expand_dims(xx_range, axis=1)
+xx_channels = K.batch_dot(xx_ones, xx_range, axes=[2, 1])
+xx_channels = K.expand_dims(xx_channels, axis=-1)
+xx_channels = K.permute_dimensions(xx_channels, [0, 2, 1, 3])
+
+yy_ones = tf.ones(tf.stack([batch_shape, dim1]), dtype='int32')
+yy_ones = K.expand_dims(yy_ones, axis=1)
+
+yy_range = K.tile(K.expand_dims(K.arange(0, dim2), axis=0),
+                    tf.stack([batch_shape, 1]))
+yy_range = K.expand_dims(yy_range, axis=-1)
+
+yy_channels = K.batch_dot(yy_range, yy_ones, axes=[2, 1])
+yy_channels = K.expand_dims(yy_channels, axis=-1)
+yy_channels = K.permute_dimensions(yy_channels, [0, 2, 1, 3])
+
+xx_channels = K.cast(xx_channels, K.floatx())
+xx_channels = xx_channels / K.cast(dim1 - 1, K.floatx())
+xx_channels = (xx_channels * 2) - 1.
+
+yy_channels = K.cast(yy_channels, K.floatx())
+yy_channels = yy_channels / K.cast(dim2 - 1, K.floatx())
+yy_channels = (yy_channels * 2) - 1.
+
+outputs = K.concatenate([encoder, xx_channels], axis=-1)
+
 
 encoder = layers.Conv2D(256, kernel_size=1, padding='valid')(encoder)
 # encoder = layers.BatchNormalization(axis=1)(encoder)
@@ -134,16 +167,13 @@ model.compile(optimizer=optimizer,
 
 steps_per_epoch = train_generator.n // train_generator.batch_size
 print('Steps per epoch: ', steps_per_epoch)
-# validation_steps = 3#valid_generator.n // valid_generator.batch_size
-# print('Validation steps: ', validation_steps)
 epochs = 10 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 for epoch in range(epochs):
 
   history = model.fit_generator(generator=train_generator,
                       steps_per_epoch=steps_per_epoch,
-                      # validation_data=valid_generator,
-                      # validation_steps=validation_steps,
                       epochs=1
                       )
 
@@ -167,7 +197,7 @@ for epoch in range(epochs):
 
 
 saved_model_dir = './saved_modelPB'
-tf.saved_model.save(model, saved_model_dir)
+# tf.saved_model.save(model, saved_model_dir)
 
 A, B, C, D = True, True, True, True
 
@@ -199,70 +229,20 @@ ordered_cols = ["Filenames"] + columns
 results = results[ordered_cols]#To get the same column order
 results.to_csv("results.csv", index=False)
 
-print(results[:4].values[:, 1:])
-print(df[valid_len:valid_len+4].values[:, 1:])
-
 ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[valid_len:].values[:, 1:])])
 print(ious.mean())
-import pdb;pdb.set_trace()
 
-# if B is True:
-#   lite_model_file = 'type_B.tflite'
-#   def representative_dataset_gen():
-#     for _ in range(num_calibration_steps):
-#       # Get sample input data as a numpy array in a method of your choosing.
-#       yield [input]
+if B is True:
+  lite_model_file = 'type_B.tflite'
 
-#   converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
-#   converter.optimizations = [tf.lite.Optimize.DEFAULT]
-#   converter.representative_dataset = representative_dataset_gen
-#   tflite_quant_model = converter.convert()  
+  representative_dataset_gen = lambda: itertools.islice(
+      ([image[None, ...]] for batch, _ in train_generator for image in batch),
+      num_calibration_steps)
 
-#   with open(lite_model_file, "wb") as f:
-#     f.write(tflite_quant_model)
+  converter = tf.lite.TFLiteConverter.from_keras_model(model)
+  converter.optimizations = [tf.lite.Optimize.DEFAULT]
+  converter.representative_dataset = representative_dataset_gen
+  tflite_quant_model = converter.convert()  
 
-# if C is True:
-
-# ------------------------------------------------------
-
-# optimize_lite_model = True  #@param {type:"boolean"}
-# full_integer_quantization = False #@param {type: "boolean"}
-# num_calibration_examples = 10  #@param {type:"slider", min:0, max:10, step:1}
-# representative_dataset = None
-# lite_model_file = "./lite_model.tflite"
-
-# if optimize_lite_model and num_calibration_examples:
-
-#   # representative_dataset = lambda: itertools.islice(
-#   #     ([image[None, ...]] for batch, _ in train_generator for image in batch),
-#   #     num_calibration_examples)
-#   # lite_model_file = "./lite_model_quant.tflite"
-
-
-#   def representative_dataset():
-#     for _ in range(num_calibration_examples):
-#       # Get sample input data as a numpy array in a method of your choosing.
-#       yield [input]
-
-#   # converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
-
-# # converter = tf.lite.TFLiteConverter.from_keras_model(model)
-# converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
-# converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
-
-
-# if optimize_lite_model:
-#   converter.optimizations = [tf.lite.Optimize.DEFAULT]
-#   if representative_dataset:  # This is optional, see above.
-#     converter.representative_dataset = representative_dataset
-#   if full_integer_quantization:
-#     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-#     converter.inference_input_type = tf.uint8
-#     converter.inference_output_type = tf.uint8
-#     lite_model_file = "./lite_model_quant_uint8.tflite"
-# lite_model_content = converter.convert()
-
-# with open(lite_model_file, "wb") as f:
-#   f.write(lite_model_content)
-# print("Wrote %sTFLite model of %d bytes." %
-#       ("optimized " if optimize_lite_model else "", len(lite_model_content)))
+  with open(lite_model_file, "wb") as f:
+    f.write(tflite_quant_model)
