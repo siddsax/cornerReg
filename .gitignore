@@ -1,0 +1,7 @@
+card_synthetic_dataset
+__py*
+*_lite
+*.csv
+*.txt
+*.tflite
+saved_modelPB*
