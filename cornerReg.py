@@ -12,7 +12,7 @@ from tensorflow.keras import layers
 import os
 from iou import getIOU
 from tensorflow.keras import backend as K
-
+from coord import CoordinateChannel2D
 dataset_directory = './card_synthetic_dataset'
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
 show_n_records = 3 #@param {type:"integer"}
@@ -86,51 +86,20 @@ base_net.trainable = True #@param {type:"boolean"}
 # is_train = True #@param {type:"boolean"}
 
 # TODO
-inp = tf.keras.Input(shape = (224, 224, 3))
+inp = tf.keras.Input(shape = (image_wh, image_wh, 3));
 encoder = base_net(inp)
 
-input_shape = K.shape(encoder)
-batch_shape, dim1, dim2, channels = input_shape
+conv_size = 512 #@param {type:"integer"}
 
-A = tf.stack([batch_shape, dim2])
-xx_ones = tf.ones(A, dtype='int32')
-xx_ones = K.expand_dims(xx_ones, axis=-1)
-
-xx_range = K.tile(K.expand_dims(K.arange(0, dim1), axis=0),
-                    tf.stack([batch_shape, 1]))
-xx_range = K.expand_dims(xx_range, axis=1)
-xx_channels = K.batch_dot(xx_ones, xx_range, axes=[2, 1])
-xx_channels = K.expand_dims(xx_channels, axis=-1)
-xx_channels = K.permute_dimensions(xx_channels, [0, 2, 1, 3])
-
-yy_ones = tf.ones(tf.stack([batch_shape, dim1]), dtype='int32')
-yy_ones = K.expand_dims(yy_ones, axis=1)
-
-yy_range = K.tile(K.expand_dims(K.arange(0, dim2), axis=0),
-                    tf.stack([batch_shape, 1]))
-yy_range = K.expand_dims(yy_range, axis=-1)
-
-yy_channels = K.batch_dot(yy_range, yy_ones, axes=[2, 1])
-yy_channels = K.expand_dims(yy_channels, axis=-1)
-yy_channels = K.permute_dimensions(yy_channels, [0, 2, 1, 3])
-
-xx_channels = K.cast(xx_channels, K.floatx())
-xx_channels = xx_channels / K.cast(dim1 - 1, K.floatx())
-xx_channels = (xx_channels * 2) - 1.
-
-yy_channels = K.cast(yy_channels, K.floatx())
-yy_channels = yy_channels / K.cast(dim2 - 1, K.floatx())
-yy_channels = (yy_channels * 2) - 1.
-
-outputs = K.concatenate([encoder, xx_channels], axis=-1)
-
-
-encoder = layers.Conv2D(256, kernel_size=1, padding='valid')(encoder)
-# encoder = layers.BatchNormalization(axis=1)(encoder)
-encoder = layers.ReLU()(encoder)
+#@markdown !!! Batch normalization layer is not supported by TFLite
+useBatchNormalization = True #@param {type:"boolean"}
+useCoordConv = True #@param {type:"boolean"}
+if useCoordConv:
+  encoder = CoordinateChannel2D()(encoder)
 
 encoder = layers.Conv2D(256, kernel_size=3, padding='valid')(encoder)
-# encoder = layers.BatchNormalization(axis=1)(encoder)
+if useBatchNormalization:
+  encoder = layers.BatchNormalization()(encoder)
 encoder = layers.ReLU()(encoder)
 
 coordinate_regression = layers.Dense(2, activation='sigmoid') # If our corners are in [0..1] range
@@ -171,36 +140,36 @@ epochs = 10 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Training loop (Used a hack for calculating IOU at end of each epoch for now)
-for epoch in range(epochs):
+# for epoch in range(epochs):
 
-  history = model.fit_generator(generator=train_generator,
-                      steps_per_epoch=steps_per_epoch,
-                      epochs=1
-                      )
+#   history = model.fit_generator(generator=train_generator,
+#                       steps_per_epoch=steps_per_epoch,
+#                       epochs=1
+#                       )
 
-  # Get IOU on validation data
+#   # Get IOU on validation data
 
-  val_gen = valid_generator
-  val_gen.batch_size = 1
-  val_gen.reset()
-  val_steps = val_gen.n // val_gen.batch_size
-  val_gen.reset()
-  pred = model.predict_generator(val_gen,
-                               steps=val_steps,
-                               verbose=1)
-  predictions = pred
-  columns = labels
-  results = pd.DataFrame(predictions, columns=columns)
-  results["Filenames"] = valid_generator.filenames
-  ordered_cols = ["Filenames"] + columns
-  results = results[ordered_cols]#To get the same column order
+#   val_gen = valid_generator
+#   val_gen.batch_size = 1
+#   val_gen.reset()
+#   val_steps = val_gen.n // val_gen.batch_size
+#   val_gen.reset()
+#   pred = model.predict_generator(val_gen,
+#                                steps=val_steps,
+#                                verbose=1)
+#   predictions = pred
+#   columns = labels
+#   results = pd.DataFrame(predictions, columns=columns)
+#   results["Filenames"] = valid_generator.filenames
+#   ordered_cols = ["Filenames"] + columns
+#   results = results[ordered_cols]#To get the same column order
 
-  ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[train_len:valid_len].values[:, 1:])])
-  print(ious.mean())
+#   ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[train_len:valid_len].values[:, 1:])])
+#   print(ious.mean())
 
 
 saved_model_dir = './saved_modelPB'
-# tf.saved_model.save(model, saved_model_dir)
+tf.saved_model.save(model, saved_model_dir)
 
 A, B, C, D = True, True, True, True
 
@@ -218,27 +187,29 @@ if A is True:
 
   with open(lite_model_file, "wb") as f:
     f.write(tflite_quant_model)
+  
+  print("------ Saved Type A -------")
 
-test_gen = test_generator
-test_gen.batch_size = 1
-test_gen.reset()
-test_steps = test_gen.n // test_gen.batch_size
-test_gen.reset()
-pred = model.predict_generator(test_gen,
-                               steps=test_steps,
-                               verbose=1)
+# test_gen = test_generator
+# test_gen.batch_size = 1
+# test_gen.reset()
+# test_steps = test_gen.n // test_gen.batch_size
+# test_gen.reset()
+# pred = model.predict_generator(test_gen,
+#                                steps=test_steps,
+#                                verbose=1)
 
-predictions = pred
-columns = labels
-results = pd.DataFrame(predictions, columns=columns)
-results["Filenames"] = test_gen.filenames
-ordered_cols = ["Filenames"] + columns
-results = results[ordered_cols]#To get the same column order
-results.to_csv("results.csv", index=False)
+# predictions = pred
+# columns = labels
+# results = pd.DataFrame(predictions, columns=columns)
+# results["Filenames"] = test_gen.filenames
+# ordered_cols = ["Filenames"] + columns
+# results = results[ordered_cols]#To get the same column order
+# results.to_csv("results.csv", index=False)
 
-# Get IOU on the test data
-ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[valid_len:].values[:, 1:])])
-print(ious.mean())
+# # Get IOU on the test data
+# ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[valid_len:].values[:, 1:])])
+# print(ious.mean())
 
 # Type B quatization where a representative dataset is used, this has the advantages that the weights need not
 # be converted back into float32 at runtime hence saving memory
@@ -257,3 +228,5 @@ if B is True:
 
   with open(lite_model_file, "wb") as f:
     f.write(tflite_quant_model)
+
+  print("------ Saved Type B -------")

@@ -72,12 +72,20 @@ test_generator = test_datagen.flow_from_dataframe(
     class_mode="other",
     target_size=target_size)
 
+ious = []
+for i in range(len(test_generator)):
 
-for i in range(10):
+    print(i)
 
+    input_data = next(test_generator)
     # here input data is dummy dataset of same shape as input data
-
-    interpreter.set_tensor(input_details[0]['index'], input_data)
+    data, label = input_data
+    interpreter.set_tensor(input_details[0]['index'], data)
     interpreter.invoke()
     output_data = interpreter.get_tensor(output_details[0]['index'])
-    print(output_data)
+    ious.append(getIOU(label, output_data))
+
+    if i == 30:
+        break
+
+print(np.mean(ious))
