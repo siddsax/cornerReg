@@ -167,7 +167,7 @@ model.compile(optimizer=optimizer,
 
 steps_per_epoch = train_generator.n // train_generator.batch_size
 print('Steps per epoch: ', steps_per_epoch)
-epochs = 10 #@param {type:'integer'}
+epochs = 100 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Training loop (Used a hack for calculating IOU at end of each epoch for now)
@@ -198,9 +198,11 @@ for epoch in range(epochs):
   ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[train_len:valid_len].values[:, 1:])])
   print(ious.mean())
 
+  if epoch % 5 == 0:
 
-saved_model_dir = './saved_modelPB'
-# tf.saved_model.save(model, saved_model_dir)
+    print("save model")
+    saved_model_dir = './models/saved_modelPB_' + str(epoch)
+    tf.saved_model.save(model, saved_model_dir)
 
 A, B, C, D = True, True, True, True
 
