@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
+import sys
 import tensorflow as tf
 import tensorflow as tf
 # tf.compat.v1.disable_eager_execution()
@@ -23,7 +24,7 @@ and then tests the model on 'dummy' data which has the shape of the input data.
 """
 
 dataset_directory = './card_synthetic_dataset'
-model_path = "type_B.tflite"
+model_path = sys.argv[1]
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
 show_n_records = 3 #@param {type:"integer"}
 # drop glare for corners regression only
@@ -72,12 +73,26 @@ test_generator = test_datagen.flow_from_dataframe(
     class_mode="other",
     target_size=target_size)
 
+ious = []
+results = []
+labels = []
+for i in range(len(test_generator)):
 
-for i in range(10):
+    print(i)
 
+    input_data = next(test_generator)
     # here input data is dummy dataset of same shape as input data
-
-    interpreter.set_tensor(input_details[0]['index'], input_data)
+    data, label = input_data
+    labels.append(label)
+    interpreter.set_tensor(input_details[0]['index'], data)
     interpreter.invoke()
     output_data = interpreter.get_tensor(output_details[0]['index'])
-    print(output_data)
+    ious.append(getIOU(label, output_data))
+    results.append(output_data)
+    if i == 30:
+        break
+for i in range(4):
+  print(labels[i], results[i])
+
+print(np.mean(ious))
+

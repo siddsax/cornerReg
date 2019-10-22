@@ -74,21 +74,20 @@ class _CoordinateChannel(Layer):
         input_shape = [input_shape[i] for i in range(4)]
         batch_shape, dim1, dim2, channels = input_shape
 
-        A = tf.stack([batch_shape, dim2])
-        xx_ones = tf.ones(A, dtype='int32')
+        xx_ones = tf.ones(tf.stack([batch_shape, dim2]), dtype='float32')
         xx_ones = K.expand_dims(xx_ones, axis=-1)
 
-        xx_range = K.tile(K.expand_dims(K.arange(0, dim1), axis=0),
+        xx_range = K.tile(K.expand_dims(K.arange(0, dim1, dtype='float32'), axis=0),
                             tf.stack([batch_shape, 1]))
         xx_range = K.expand_dims(xx_range, axis=1)
         xx_channels = K.batch_dot(xx_ones, xx_range, axes=[2, 1])
         xx_channels = K.expand_dims(xx_channels, axis=-1)
         xx_channels = K.permute_dimensions(xx_channels, [0, 2, 1, 3])
 
-        yy_ones = tf.ones(tf.stack([batch_shape, dim1]), dtype='int32')
+        yy_ones = tf.ones(tf.stack([batch_shape, dim1]), dtype='float32')
         yy_ones = K.expand_dims(yy_ones, axis=1)
 
-        yy_range = K.tile(K.expand_dims(K.arange(0, dim2), axis=0),
+        yy_range = K.tile(K.expand_dims(K.arange(0, dim2, dtype='float32'), axis=0),
                             tf.stack([batch_shape, 1]))
         yy_range = K.expand_dims(yy_range, axis=-1)
 
@@ -104,8 +103,8 @@ class _CoordinateChannel(Layer):
         yy_channels = yy_channels / K.cast(dim2 - 1, K.floatx())
         yy_channels = (yy_channels * 2) - 1.
 
-        outputs = K.concatenate([inputs, xx_channels], axis=-1)
-        # outputs = K.concatenate([inputs, xx_channels, yy_channels], axis=-1)
+        # outputs = K.concatenate([inputs, xx_channels], axis=-1)
+        outputs = K.concatenate([inputs, xx_channels, yy_channels], axis=-1)
 
         if self.use_radius:
             rr = K.sqrt(K.square(xx_channels - 0.5) +

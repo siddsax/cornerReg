@@ -7,11 +7,12 @@ import matplotlib.pylab as plt
 from matplotlib.patches import Polygon
 import itertools
 import os 
+import sys
 
 # converter = tf.lite.TFLiteConverter.from_saved_model('saved_modelPB')  
 # tflite_model = converter.convert()
 
-saved_model_path = 'saved_modelPB'
+saved_model_path = sys.argv[1]
 
 optimize_lite_model = True  #@param {type:"boolean"}
 full_integer_quantization = False #@param {type: "boolean"}
@@ -43,7 +44,6 @@ if optimize_lite_model:
     lite_model_file = "./lite_model_quant_uint8.tflite"
 lite_model_content = converter.convert()
 
-import pdb;pdb.set_trace()
 with open(lite_model_file, "wb") as f:
   f.write(lite_model_content)
 print("Wrote %sTFLite model of %d bytes." %
