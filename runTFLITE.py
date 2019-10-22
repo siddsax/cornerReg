@@ -14,7 +14,7 @@ from coord import CoordinateChannel2D
 from tensorflow.keras import layers
 import os
 from iou import getIOU
-
+from sklearn.metrics import mean_squared_error
 
 
 """
@@ -76,9 +76,11 @@ test_generator = test_datagen.flow_from_dataframe(
 ious = []
 results = []
 labels = []
+mse = []
 for i in range(len(test_generator)):
 
-    print(i)
+    if i % 100 == 0:
+      print(i)
 
     input_data = next(test_generator)
     # here input data is dummy dataset of same shape as input data
@@ -88,11 +90,9 @@ for i in range(len(test_generator)):
     interpreter.invoke()
     output_data = interpreter.get_tensor(output_details[0]['index'])
     ious.append(getIOU(label, output_data))
+    mse.append(mean_squared_error(label, output_data))
+
     results.append(output_data)
-    if i == 30:
-        break
-for i in range(4):
-  print(labels[i], results[i])
 
 print(np.mean(ious))
-
+print(np.mean(mse))
