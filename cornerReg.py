@@ -170,12 +170,15 @@ print('Steps per epoch: ', steps_per_epoch)
 epochs = 10 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+# Training loop (Used a hack for calculating IOU at end of each epoch for now)
 for epoch in range(epochs):
 
   history = model.fit_generator(generator=train_generator,
                       steps_per_epoch=steps_per_epoch,
                       epochs=1
                       )
+
+  # Get IOU on validation data
 
   val_gen = valid_generator
   val_gen.batch_size = 1
@@ -203,6 +206,10 @@ A, B, C, D = True, True, True, True
 
 num_calibration_steps = 10
 
+
+# Type A is the quantization where the weights are quantized without the use of representational data 
+# which means that it will take larger space in RAM at runtime
+
 if A is True:
   lite_model_file = 'type_A.tflite'
   converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
@@ -229,8 +236,12 @@ ordered_cols = ["Filenames"] + columns
 results = results[ordered_cols]#To get the same column order
 results.to_csv("results.csv", index=False)
 
+# Get IOU on the test data
 ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[valid_len:].values[:, 1:])])
 print(ious.mean())
+
+# Type B quatization where a representative dataset is used, this has the advantages that the weights need not
+# be converted back into float32 at runtime hence saving memory
 
 if B is True:
   lite_model_file = 'type_B.tflite'

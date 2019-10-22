@@ -14,7 +14,16 @@ from tensorflow.keras import layers
 import os
 from iou import getIOU
 
+
+
+"""
+This file basically loads a dataset defined in dataset_directory and a tflite model specified in model_path
+and then tests the model on 'dummy' data which has the shape of the input data.
+
+"""
+
 dataset_directory = './card_synthetic_dataset'
+model_path = "type_B.tflite"
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
 show_n_records = 3 #@param {type:"integer"}
 # drop glare for corners regression only
@@ -40,7 +49,7 @@ seed = 1
 
 
 # Load TFLite model and allocate tensors.
-interpreter = tf.lite.Interpreter(model_path="type_B.tflite")
+interpreter = tf.lite.Interpreter(model_path=model_path)
 interpreter.allocate_tensors()
 
 # Get input and output tensors.
@@ -65,6 +74,8 @@ test_generator = test_datagen.flow_from_dataframe(
 
 
 for i in range(10):
+
+    # here input data is dummy dataset of same shape as input data
 
     interpreter.set_tensor(input_details[0]['index'], input_data)
     interpreter.invoke()
