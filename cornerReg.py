@@ -80,7 +80,7 @@ image_batch, label_batch = train_generator[0]
 print("Image batch shape: ", image_batch.shape)
 print("Label batch shape: ", label_batch.shape)
 
-base_net = tf.keras.applications.MobileNetV2(input_shape=(image_wh, image_wh, 3),
+base_net = tf.keras.applications.MobileNetV2(input_shape=(image_wh, image_wh, 3), alpha = .35, 
                                                include_top=False)
 base_net.trainable = True #@param {type:"boolean"}
 # is_train = True #@param {type:"boolean"}
@@ -89,12 +89,18 @@ base_net.trainable = True #@param {type:"boolean"}
 inp = tf.keras.Input(shape = (image_wh, image_wh, 3));
 encoder = base_net(inp)
 
-conv_size = 512 #@param {type:"integer"}
 
 #@markdown !!! Batch normalization layer is not supported by TFLite
 useBatchNormalization = True #@param {type:"boolean"}
 useCoordConv = True #@param {type:"boolean"}
 if useCoordConv:
+  print("-"*100)
+  coord_conv_size = 256 #@param {type:"integer"}
+  encoder = layers.Conv2D(coord_conv_size, kernel_size=1, padding='valid')(encoder)
+  if useBatchNormalization:
+    encoder = layers.BatchNormalization()(encoder)
+  encoder = layers.ReLU()(encoder)
+
   encoder = CoordinateChannel2D()(encoder)
 
 encoder = layers.Conv2D(256, kernel_size=3, padding='valid')(encoder)
