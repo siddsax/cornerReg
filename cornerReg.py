@@ -13,10 +13,18 @@ import sys
 from iou import getIOU
 from tensorflow.keras import backend as K
 from coord import CoordinateChannel2D
-dataset_directory = './card_synthetic_dataset'
+import argparse
+
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('--epochs', dest='epochs', type=int, default=25, help='number of epochs to run')
+parser.add_argument('--loadModel', dest='loadModel', type=str, default='', help='if loading a preexisting model')
+parser.add_argument('--datadir', dest='dataset_directory', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
+params = parser.parse_args()
+
+dataset_directory = params.dataset_directory
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
 show_n_records = 3 #@param {type:"integer"}
-# drop glare for corners regression only
+
 df.drop(columns=['glare'], inplace=True)
 print(df[:show_n_records])
 print(df.columns)
@@ -146,10 +154,10 @@ epochs = 50 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Training loop (Used a hack for calculating IOU at end of each epoch for now)
-if len(sys.argv) > 1:
-  model = tf.keras.models.load_model(sys.argv[1])
+if len(params.load_model)
+  model = tf.keras.models.load_model(params.load_model)
 
-for epoch in range(epochs):
+for epoch in range(params.epochs):
 
    history = model.fit_generator(generator=train_generator,
                        steps_per_epoch=steps_per_epoch,
