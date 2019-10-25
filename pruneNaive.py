@@ -1,5 +1,4 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
+from tensorflow_model_optimization.sparsity import keras as sparsity
 import tensorflow as tf
 # tf.compat.v1.disable_eager_execution()
 import pandas as pd
@@ -8,8 +7,10 @@ import matplotlib.pylab as plt
 from matplotlib.patches import Polygon
 import itertools
 import os 
-from tensorflow.keras import layers
 import sys
+import matplotlib.pylab as plt
+from matplotlib.patches import Polygon
+from tensorflow.keras import layers
 from iou import getIOU
 from tensorflow.keras import backend as K
 from coord import CoordinateChannel2D
@@ -19,12 +20,14 @@ parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--epochs', dest='epochs', type=int, default=25, help='number of epochs to run')
 parser.add_argument('--loadModel', dest='loadModel', type=str, default='', help='if loading a preexisting model')
 parser.add_argument('--datadir', dest='dataset_directory', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
+parser.add_argument('--logdir', dest='logdir', type=str, default='./logs', help='if loading a preexisting model')
 params = parser.parse_args()
+
 
 dataset_directory = params.dataset_directory
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
 show_n_records = 3 #@param {type:"integer"}
-
+# drop glare for corners regression only
 df.drop(columns=['glare'], inplace=True)
 print(df[:show_n_records])
 print(df.columns)
@@ -88,8 +91,20 @@ image_batch, label_batch = train_generator[0]
 print("Image batch shape: ", image_batch.shape)
 print("Label batch shape: ", label_batch.shape)
 
-base_net = tf.keras.applications.MobileNetV2(input_shape=(image_wh, image_wh, 3), alpha = .35, 
-                                               include_top=False)
+
+end_step = np.ceil(1.0 * train_len / batch_size).astype(np.int32) * params.epochs
+
+pruning_params = {
+      'pruning_schedule': sparsity.PolynomialDecay(initial_sparsity=0.50,
+                                                   final_sparsity=0.90,
+                                                   begin_step=2000,
+                                                   end_step=end_step,
+                                                   frequency=100)
+}
+
+
+base_net = sparsity.prune_low_magnitude(tf.keras.applications.MobileNetV2(input_shape=(image_wh, image_wh, 3), alpha = 0.35,
+                                               include_top=False))
 base_net.trainable = True #@param {type:"boolean"}
 # is_train = True #@param {type:"boolean"}
 
@@ -97,21 +112,20 @@ base_net.trainable = True #@param {type:"boolean"}
 inp = tf.keras.Input(shape = (image_wh, image_wh, 3));
 encoder = base_net(inp)
 
+conv_size = 512 #@param {type:"integer"}
 
-#@markdown !!! Batch normalization layer is not supported by TFLite
 useBatchNormalization = True #@param {type:"boolean"}
 useCoordConv = True #@param {type:"boolean"}
 if useCoordConv:
-  print("-"*100)
-  coord_conv_size = 256 #@param {type:"integer"}
+  coord_conv_size = 512 #@param {type:"integer"}
   encoder = layers.Conv2D(coord_conv_size, kernel_size=1, padding='valid')(encoder)
   if useBatchNormalization:
     encoder = layers.BatchNormalization()(encoder)
   encoder = layers.ReLU()(encoder)
-
   encoder = CoordinateChannel2D()(encoder)
 
-encoder = layers.Conv2D(256, kernel_size=3, padding='valid')(encoder)
+
+encoder = sparsity.prune_low_magnitude(layers.Conv2D(256, kernel_size=3, padding='valid'))(encoder)
 if useBatchNormalization:
   encoder = layers.BatchNormalization()(encoder)
 encoder = layers.ReLU()(encoder)
@@ -143,19 +157,46 @@ corners = layers.Concatenate()([tl_regression, tr_regression, br_regression, bl_
 model = tf.keras.Model(inp, corners)
 model.summary()
 
+callbacks = [
+    sparsity.UpdatePruningStep(),
+    sparsity.PruningSummaries(log_dir=params.logdir, profile_batch=0)
+]
+
+if len(params.loadModel):
+    saved_model_path = params.loadModel
+model = tf.keras.models.load_model(saved_model_path)
+
 optimizer = tf.keras.optimizers.Adam()
 model.compile(optimizer=optimizer, 
               loss='mean_squared_error',
               metrics=['mae', 'mse'])
+
+# pruned_model = tf.keras.Sequential([
+#     sparsity.prune_low_magnitude(
+#         l.Conv2D(32, 5, padding='same', activation='relu'),
+#         input_shape=input_shape,
+#         **pruning_params),
+#     l.MaxPooling2D((2, 2), (2, 2), padding='same'),
+#     l.BatchNormalization(),
+#     sparsity.prune_low_magnitude(
+#         l.Conv2D(64, 5, padding='same', activation='relu'), **pruning_params),
+#     l.MaxPooling2D((2, 2), (2, 2), padding='same'),
+#     l.Flatten(),
+#     sparsity.prune_low_magnitude(l.Dense(1024, activation='relu'),
+#                                  **pruning_params),
+#     l.Dropout(0.4),
+#     sparsity.prune_low_magnitude(l.Dense(num_classes, activation='softmax'),
+#                                  **pruning_params)
+# ])
+
+# pruned_model.summary()
+
 
 steps_per_epoch = train_generator.n // train_generator.batch_size
 print('Steps per epoch: ', steps_per_epoch)
 epochs = 50 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# Training loop (Used a hack for calculating IOU at end of each epoch for now)
-if len(params.load_model)
-  model = tf.keras.models.load_model(params.load_model)
 
 for epoch in range(params.epochs):
 
@@ -187,65 +228,5 @@ for epoch in range(params.epochs):
    if epoch % 5 == 0:
 
      print("save model")
-     saved_model_dir = './models/saved_modelPB_' + str(epoch)
+     saved_model_dir = './models/saved_modelPB_pr_' + str(epoch)
      tf.saved_model.save(model, saved_model_dir, include_optimizer=True)
-
-A, B, C, D = True, True, True, True
-
-num_calibration_steps = 10
-
-
-# Type A is the quantization where the weights are quantized without the use of representational data 
-# which means that it will take larger space in RAM at runtime
-
-if A is True:
-  lite_model_file = 'type_A.tflite'
-  converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
-  converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
-  tflite_quant_model = converter.convert()
-
-  with open(lite_model_file, "wb") as f:
-    f.write(tflite_quant_model)
-  
-  print("------ Saved Type A -------")
-
-# test_gen = test_generator
-# test_gen.batch_size = 1
-# test_gen.reset()
-# test_steps = test_gen.n // test_gen.batch_size
-# test_gen.reset()
-# pred = model.predict_generator(test_gen,
-#                                steps=test_steps,
-#                                verbose=1)
-
-# predictions = pred
-# columns = labels
-# results = pd.DataFrame(predictions, columns=columns)
-# results["Filenames"] = test_gen.filenames
-# ordered_cols = ["Filenames"] + columns
-# results = results[ordered_cols]#To get the same column order
-# results.to_csv("results.csv", index=False)
-
-# # Get IOU on the test data
-# ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[valid_len:].values[:, 1:])])
-# print(ious.mean())
-
-# Type B quatization where a representative dataset is used, this has the advantages that the weights need not
-# be converted back into float32 at runtime hence saving memory
-
-if B is True:
-  lite_model_file = 'type_B.tflite'
-
-  representative_dataset_gen = lambda: itertools.islice(
-      ([image[None, ...]] for batch, _ in train_generator for image in batch),
-      num_calibration_steps)
-
-  converter = tf.lite.TFLiteConverter.from_keras_model(model)
-  converter.optimizations = [tf.lite.Optimize.DEFAULT]
-  converter.representative_dataset = representative_dataset_gen
-  tflite_quant_model = converter.convert()  
-
-  with open(lite_model_file, "wb") as f:
-    f.write(tflite_quant_model)
-
-  print("------ Saved Type B -------")
