@@ -8,12 +8,10 @@ from matplotlib.patches import Polygon
 import itertools
 import os 
 import sys
-
-# converter = tf.lite.TFLiteConverter.from_saved_model('saved_modelPB')  
-# tflite_model = converter.convert()
+from coord import CoordinateChannel2D
 
 saved_model_path = sys.argv[1]
-
+pruning = 1
 optimize_lite_model = True  #@param {type:"boolean"}
 full_integer_quantization = False #@param {type: "boolean"}
 
@@ -21,15 +19,18 @@ num_calibration_examples = 10
 representative_dataset = None
 lite_model_file = "./lite_model.tflite"
 
-# if optimize_lite_model and num_calibration_examples:
+from tensorflow_model_optimization.sparsity import keras as sparsity
+from coord import CoordinateChannel2D
 
-#   representative_dataset = lambda: itertools.islice(
-#       ([image[None, ...]] for batch, _ in train_generator for image in batch),
-#       num_calibration_examples)
-#   lite_model_file = "./lite_model_quant.tflite"
+if pruning:
 
-# converter = tf.lite.TFLiteConverter.from_keras_model(model)
-converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+  with sparsity.prune_scope():
+    pruned_model = tf.keras.models.load_model(saved_model_path, custom_objects = {'CoordinateChannel2D' : CoordinateChannel2D})
+  final_model = sparsity.strip_pruning(pruned_model)
+  converter = tf.lite.TFLiteConverter.from_keras_model(final_model)
+else:
+  converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+
 converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
 
 
@@ -48,6 +49,3 @@ with open(lite_model_file, "wb") as f:
   f.write(lite_model_content)
 print("Wrote %sTFLite model of %d bytes." %
       ("optimized " if optimize_lite_model else "", len(lite_model_content)))
-
-# with open(lite_model_file, "wb") as f:
-#   f.write(tflite_model)
