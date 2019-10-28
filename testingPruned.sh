@@ -1,5 +1,5 @@
 name=$1
-# python cornerReg.py --epochs=$2
+# python pruneNaive.py --epochs=$2
 # mkdir models/$name
 # mv models/saved_modelPB_* models/$name
 # mkdir outs
@@ -13,9 +13,10 @@ do
         echo "Working with $file"
         python loadSave.py $file
         echo "Testing on $file" >> outs/$name.txt
-        python runTFLITE.py lite_model.tflite |& tee  >(tail -1 >> outs/$name.txt)
+        mv lite_model.tflite lite_model_pr.tflite
+        python runTFLITE.py lite_model_pr.tflite |& tee  >(tail -1 >> outs/$name.txt)
         echo "------------------------------------------------------" >> outs/$name.txt
-        mv lite_model.tflite $file.tflite
+        mv lite_model_pr.tflite $file.tflite
     fi
 done    
 mkdir models/$name/tfliteModels

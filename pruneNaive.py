@@ -17,6 +17,15 @@ from coord import CoordinateChannel2D
 import argparse
 import tempfile
 
+class CustomSaver(tf.keras.callbacks.Callback):
+  def __init__(self, saveEpochs):
+    self.saveEpochs = saveEpochs
+
+  def on_epoch_end(self, epoch, logs={}):
+    if epoch % self.saveEpochs == 0:  # or save after some epoch, each k-th epoch etc.
+      final_model = sparsity.strip_pruning(self.model)
+      final_model.save("./models/saved_modelPB_pr_{}".format(epoch))
+
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--epochs', dest='epochs', type=int, default=20, help='number of epochs to run')
 parser.add_argument('--loadModel', dest='loadModel', type=str, default='', help='if loading a preexisting model')
@@ -98,7 +107,7 @@ end_step = np.ceil(1.0 * train_len / batch_size).astype(np.int32) * params.epoch
 pruning_params = {
       'pruning_schedule': sparsity.PolynomialDecay(initial_sparsity=0.50,
                                                    final_sparsity=0.90,
-                                                   begin_step=1500,
+                                                   begin_step=1600,
                                                    end_step=end_step,
                                                    frequency=100)
 }
@@ -170,7 +179,7 @@ model.compile(optimizer=optimizer,
 callbacks = [
     sparsity.UpdatePruningStep(),
     sparsity.PruningSummaries(log_dir=params.logdir, profile_batch=0),
-    tf.keras.callbacks.ModelCheckpoint("./models/saved_modelPB_pr_{epoch:02d}", monitor='val_loss', verbose=0, save_best_only=False, save_weights_only=False, mode='auto', period=params.epochs//5)
+    CustomSaver(saveEpochs = params.epochs // 5)
 ]
 
 # pruned_model = tf.keras.Sequential([

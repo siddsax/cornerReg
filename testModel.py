@@ -32,6 +32,7 @@ show_n_records = 3 #@param {type:"integer"}
 df.drop(columns=['glare'], inplace=True)
 print(df[:show_n_records])
 print(df.columns)
+train_len = len(df) // 2
 
 labels = list(df)[1:]
 print(labels)
@@ -69,14 +70,16 @@ test_generator = test_datagen.flow_from_dataframe(
     class_mode="other",
     target_size=target_size)
 
-image_batch, label_batch = train_generator[0]
+image_batch, label_batch = test_generator[0]
 print("Image batch shape: ", image_batch.shape)
 print("Label batch shape: ", label_batch.shape)
 
 import sys
-saved_model_path = sys.argv[1]
+saved_model_path = params.loadModel
 
-if pruning:
+type_A = 0
+
+if type_A:
   with sparsity.prune_scope():
     model = tf.keras.models.load_model(saved_model_path, custom_objects = {'CoordinateChannel2D' : CoordinateChannel2D})
 else:
@@ -97,7 +100,9 @@ columns = labels
 results = pd.DataFrame(predictions, columns=columns)
 results["Filenames"] = test_generator.filenames
 ordered_cols = ["Filenames"] + columns
-results = results[ordered_cols]#To get the same column order
+
+results = results[ordered_cols]
+
 
 ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[train_len:valid_len].values[:, 1:])])
 print(ious.mean())

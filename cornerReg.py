@@ -15,6 +15,15 @@ from tensorflow.keras import backend as K
 from coord import CoordinateChannel2D
 import argparse
 
+class CustomSaver(tf.keras.callbacks.Callback):
+  def __init__(self, saveEpochs):
+    self.saveEpochs = saveEpochs
+
+  def on_epoch_end(self, epoch, logs={}):
+    if epoch % self.saveEpochs == 0:  # or save after some epoch, each k-th epoch etc.
+      final_model = sparsity.strip_pruning(self.model)
+      final_model.save("./models/saved_modelPB_pr_{}".format(epoch))
+
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--epochs', dest='epochs', type=int, default=25, help='number of epochs to run')
 parser.add_argument('--loadModel', dest='loadModel', type=str, default='', help='if loading a preexisting model')
@@ -148,104 +157,109 @@ model.compile(optimizer=optimizer,
               loss='mean_squared_error',
               metrics=['mae', 'mse'])
 
+callbacks = [
+    CustomSaver(saveEpochs = params.epochs // 5)
+]
+
 steps_per_epoch = train_generator.n // train_generator.batch_size
 print('Steps per epoch: ', steps_per_epoch)
 epochs = 50 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Training loop (Used a hack for calculating IOU at end of each epoch for now)
-if len(params.load_model)
+if len(params.load_model):
   model = tf.keras.models.load_model(params.load_model)
 
-for epoch in range(params.epochs):
+# for epoch in range(params.epochs):
 
-   history = model.fit_generator(generator=train_generator,
-                       steps_per_epoch=steps_per_epoch,
-                       epochs=1
-                       )
+history = model.fit_generator(generator=train_generator,
+                  steps_per_epoch=steps_per_epoch,
+                  epochs=params.epochs,
+                  callbacks=callbacks
+                    )
 
-   # Get IOU on validation data
+#    # Get IOU on validation data
 
-   val_gen = valid_generator
-   val_gen.batch_size = 1
-   val_gen.reset()
-   val_steps = val_gen.n // val_gen.batch_size
-   val_gen.reset()
-   pred = model.predict_generator(val_gen,
-                                steps=val_steps,
-                                verbose=1)
-   predictions = pred
-   columns = labels
-   results = pd.DataFrame(predictions, columns=columns)
-   results["Filenames"] = valid_generator.filenames
-   ordered_cols = ["Filenames"] + columns
-   results = results[ordered_cols]#To get the same column order
+#    val_gen = valid_generator
+#    val_gen.batch_size = 1
+#    val_gen.reset()
+#    val_steps = val_gen.n // val_gen.batch_size
+#    val_gen.reset()
+#    pred = model.predict_generator(val_gen,
+#                                 steps=val_steps,
+#                                 verbose=1)
+#    predictions = pred
+#    columns = labels
+#    results = pd.DataFrame(predictions, columns=columns)
+#    results["Filenames"] = valid_generator.filenames
+#    ordered_cols = ["Filenames"] + columns
+#    results = results[ordered_cols]#To get the same column order
 
-   ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[train_len:valid_len].values[:, 1:])])
-   print(ious.mean())
+#    ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[train_len:valid_len].values[:, 1:])])
+#    print(ious.mean())
 
-   if epoch % 5 == 0:
+#    if epoch % 5 == 0:
 
-     print("save model")
-     saved_model_dir = './models/saved_modelPB_' + str(epoch)
-     tf.saved_model.save(model, saved_model_dir, include_optimizer=True)
+#      print("save model")
+#      saved_model_dir = './models/saved_modelPB_' + str(epoch)
+#      tf.saved_model.save(model, saved_model_dir, include_optimizer=True)
 
-A, B, C, D = True, True, True, True
+# A, B, C, D = True, True, True, True
 
-num_calibration_steps = 10
+# num_calibration_steps = 10
 
 
-# Type A is the quantization where the weights are quantized without the use of representational data 
-# which means that it will take larger space in RAM at runtime
+# # Type A is the quantization where the weights are quantized without the use of representational data 
+# # which means that it will take larger space in RAM at runtime
 
-if A is True:
-  lite_model_file = 'type_A.tflite'
-  converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
-  converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
-  tflite_quant_model = converter.convert()
+# if A is True:
+#   lite_model_file = 'type_A.tflite'
+#   converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+#   converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
+#   tflite_quant_model = converter.convert()
 
-  with open(lite_model_file, "wb") as f:
-    f.write(tflite_quant_model)
+#   with open(lite_model_file, "wb") as f:
+#     f.write(tflite_quant_model)
   
-  print("------ Saved Type A -------")
+#   print("------ Saved Type A -------")
 
-# test_gen = test_generator
-# test_gen.batch_size = 1
-# test_gen.reset()
-# test_steps = test_gen.n // test_gen.batch_size
-# test_gen.reset()
-# pred = model.predict_generator(test_gen,
-#                                steps=test_steps,
-#                                verbose=1)
+# # test_gen = test_generator
+# # test_gen.batch_size = 1
+# # test_gen.reset()
+# # test_steps = test_gen.n // test_gen.batch_size
+# # test_gen.reset()
+# # pred = model.predict_generator(test_gen,
+# #                                steps=test_steps,
+# #                                verbose=1)
 
-# predictions = pred
-# columns = labels
-# results = pd.DataFrame(predictions, columns=columns)
-# results["Filenames"] = test_gen.filenames
-# ordered_cols = ["Filenames"] + columns
-# results = results[ordered_cols]#To get the same column order
-# results.to_csv("results.csv", index=False)
+# # predictions = pred
+# # columns = labels
+# # results = pd.DataFrame(predictions, columns=columns)
+# # results["Filenames"] = test_gen.filenames
+# # ordered_cols = ["Filenames"] + columns
+# # results = results[ordered_cols]#To get the same column order
+# # results.to_csv("results.csv", index=False)
 
-# # Get IOU on the test data
-# ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[valid_len:].values[:, 1:])])
-# print(ious.mean())
+# # # Get IOU on the test data
+# # ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[valid_len:].values[:, 1:])])
+# # print(ious.mean())
 
-# Type B quatization where a representative dataset is used, this has the advantages that the weights need not
-# be converted back into float32 at runtime hence saving memory
+# # Type B quatization where a representative dataset is used, this has the advantages that the weights need not
+# # be converted back into float32 at runtime hence saving memory
 
-if B is True:
-  lite_model_file = 'type_B.tflite'
+# if B is True:
+#   lite_model_file = 'type_B.tflite'
 
-  representative_dataset_gen = lambda: itertools.islice(
-      ([image[None, ...]] for batch, _ in train_generator for image in batch),
-      num_calibration_steps)
+#   representative_dataset_gen = lambda: itertools.islice(
+#       ([image[None, ...]] for batch, _ in train_generator for image in batch),
+#       num_calibration_steps)
 
-  converter = tf.lite.TFLiteConverter.from_keras_model(model)
-  converter.optimizations = [tf.lite.Optimize.DEFAULT]
-  converter.representative_dataset = representative_dataset_gen
-  tflite_quant_model = converter.convert()  
+#   converter = tf.lite.TFLiteConverter.from_keras_model(model)
+#   converter.optimizations = [tf.lite.Optimize.DEFAULT]
+#   converter.representative_dataset = representative_dataset_gen
+#   tflite_quant_model = converter.convert()  
 
-  with open(lite_model_file, "wb") as f:
-    f.write(tflite_quant_model)
+#   with open(lite_model_file, "wb") as f:
+#     f.write(tflite_quant_model)
 
-  print("------ Saved Type B -------")
+#   print("------ Saved Type B -------")

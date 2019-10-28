@@ -11,7 +11,6 @@ import sys
 from coord import CoordinateChannel2D
 
 saved_model_path = sys.argv[1]
-pruning = 1
 optimize_lite_model = True  #@param {type:"boolean"}
 full_integer_quantization = False #@param {type: "boolean"}
 
@@ -22,14 +21,15 @@ lite_model_file = "./lite_model.tflite"
 from tensorflow_model_optimization.sparsity import keras as sparsity
 from coord import CoordinateChannel2D
 
-if pruning:
+pruning = 0
+# if pruning:
 
-  with sparsity.prune_scope():
-    pruned_model = tf.keras.models.load_model(saved_model_path, custom_objects = {'CoordinateChannel2D' : CoordinateChannel2D})
-  final_model = sparsity.strip_pruning(pruned_model)
-  converter = tf.lite.TFLiteConverter.from_keras_model(final_model)
-else:
-  converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+#   with sparsity.prune_scope():
+#     pruned_model = tf.keras.models.load_model(saved_model_path, custom_objects = {'CoordinateChannel2D' : CoordinateChannel2D})
+
+#   converter = tf.lite.TFLiteConverter.from_keras_model(pruned_model)
+# else:
+converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
 
 converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
 
