@@ -26,11 +26,12 @@ and then tests the model on 'dummy' data which has the shape of the input data.
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--datadir', dest='dataset_directory', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
+parser.add_argument('--modelPath', dest='model_path', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
 params = parser.parse_args()
 
 
 dataset_directory = params.dataset_directory #'./card_synthetic_dataset'
-model_path = sys.argv[1]
+model_path = params.model_path
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
 show_n_records = 3 #@param {type:"integer"}
 # drop glare for corners regression only
