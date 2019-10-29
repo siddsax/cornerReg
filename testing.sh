@@ -14,7 +14,7 @@ do
         echo "Working with $file"
         python loadSave.py $file
         echo "Testing on $file" >> outs/$name.txt
-        python runTFLITE.py lite_model.tflite |& tee  >(tail -1 >> outs/$name.txt)
+        python runTFLITE.py lite_model.tflite  --dataset_directory /data/card_synthetic_dataset_v2 |& tee  >(tail -1 >> outs/$name.txt)
         echo "------------------------------------------------------" >> outs/$name.txt
         mv lite_model.tflite $file.tflite
     fi
