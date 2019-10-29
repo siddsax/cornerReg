@@ -1,8 +1,8 @@
 name=$1
-# python pruneNaive.py --epochs=$2
-# mkdir models/$name
-# mv models/saved_modelPB_* models/$name
-# mkdir outs
+python pruneNaive.py --epochs=$2 --datadir /data/card_synthetic_dataset_v2
+mkdir models/$name
+mv models/saved_modelPB_* models/$name
+mkdir outs
 rm outs/$name.txt
 rm -rf models/$name/tfliteModels
 for file in "models/$name"/*

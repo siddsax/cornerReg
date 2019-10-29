@@ -21,8 +21,7 @@ class CustomSaver(tf.keras.callbacks.Callback):
 
   def on_epoch_end(self, epoch, logs={}):
     if epoch % self.saveEpochs == 0:  # or save after some epoch, each k-th epoch etc.
-      final_model = sparsity.strip_pruning(self.model)
-      final_model.save("./models/saved_modelPB_pr_{}".format(epoch))
+      final_model.save("./models/saved_modelPB_{}".format(epoch))
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--epochs', dest='epochs', type=int, default=25, help='number of epochs to run')
@@ -167,7 +166,7 @@ epochs = 50 #@param {type:'integer'}
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Training loop (Used a hack for calculating IOU at end of each epoch for now)
-if len(params.load_model):
+if len(params.loadModel):
   model = tf.keras.models.load_model(params.load_model)
 
 # for epoch in range(params.epochs):
