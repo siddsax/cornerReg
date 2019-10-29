@@ -21,7 +21,7 @@ class CustomSaver(tf.keras.callbacks.Callback):
 
   def on_epoch_end(self, epoch, logs={}):
     if epoch % self.saveEpochs == 0:  # or save after some epoch, each k-th epoch etc.
-      final_model.save("./models/saved_modelPB_{}".format(epoch))
+      self.model.save("./models/saved_modelPB_{}".format(epoch))
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--epochs', dest='epochs', type=int, default=25, help='number of epochs to run')
