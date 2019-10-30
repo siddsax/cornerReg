@@ -127,7 +127,7 @@ useCoordConv = True #@param {type:"boolean"}
 if useCoordConv:
   print("-"*100)
   coord_conv_size = 256 #@param {type:"integer"}
-  encoder = sparsity.prune_low_magnitude(layers.Conv2D(coord_conv_size, kernel_size=1, padding='valid'))(encoder)
+  encoder = sparsity.prune_low_magnitude(layers.Conv2D(coord_conv_size, kernel_size=1, padding='valid'), **pruning_params)(encoder)
   if useBatchNormalization:
     encoder = layers.BatchNormalization()(encoder)
   encoder = layers.ReLU()(encoder)

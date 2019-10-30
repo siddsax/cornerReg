@@ -109,8 +109,8 @@ for i in range(len(test_generator)):
     mse.append(mean_squared_error(label, output_data))
 
     results.append(output_data)
-    if i == 5:
-      break
+    # if i == 5:
+    #   break
 
 # results = np.array(results)
 # plt.figure(figsize=(8, 8))
