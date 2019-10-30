@@ -1,6 +1,9 @@
 
 *.h5
 logs
+card_synthetic_dataset_v1
+models
+card_synthetic_dataset_v2
 card_synthetic_dataset
 __py*
 saved_mod*

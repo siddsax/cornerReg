@@ -16,7 +16,7 @@ import os
 from iou import getIOU
 from sklearn.metrics import mean_squared_error
 import argparse
-
+import matplotlib.pylab as plt
 
 """
 This file basically loads a dataset defined in dataset_directory and a tflite model specified in model_path
@@ -47,7 +47,16 @@ horizontal_flip = False #@param {type:"boolean"}
 vertical_flip = False#@param {type:"boolean"}
 # TODO add augmentation params
 
-test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=horizontal_flip, vertical_flip=vertical_flip)
+# test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=horizontal_flip, vertical_flip=vertical_flip)
+
+datagen_kw = dict(rescale=1./255, 
+                  horizontal_flip=horizontal_flip,
+                  vertical_flip=vertical_flip,
+                  featurewise_center=False)
+test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(datagen_kw)
+datagen = tf.keras.preprocessing.image.ImageDataGenerator(datagen_kw)
+
+
 # mobilenetv2 input size
 image_wh = 224
 target_size = (image_wh, image_wh)
@@ -100,5 +109,33 @@ for i in range(len(test_generator)):
     mse.append(mean_squared_error(label, output_data))
 
     results.append(output_data)
+    if i == 5:
+      break
+
+# results = np.array(results)
+# plt.figure(figsize=(8, 8))
+# plt.subplots_adjust(hspace=0.5)
+# for n in range(4):
+#   img, lbl = test_generator[n]
+#   plt.subplot(2, 2, n+1)
+#   plt.imshow(img[0]/255.0)
+#   plg = np.reshape(lbl[0]*img.shape[1], (-1, 2))
+#   plt.gca().add_patch(Polygon(plg, ec='r', fc='none'))
+#   plt.axis('off')
+# _ = plt.suptitle("Test images")
+
+# plt.figure(figsize=(8, 8))
+# plt.subplots_adjust(hspace=0.5)
+# for n in range(4):
+#   img, lbl = test_generator[n]
+#   # import pdb;pdb.set_trace()
+#   lbl = results[n]#.reshape((1, 8))
+#   plt.subplot(2, 2, n+1)
+#   plt.imshow(img[0]/255.0)
+#   plg = np.reshape(lbl[0]*img.shape[1], (-1, 2))
+#   plt.gca().add_patch(Polygon(plg, ec='r', fc='none'))
+#   plt.axis('off')
+# _ = plt.suptitle("Test images")
+# plt.show()
 
 print("The Mean IOU is {} (Range 0-1) and the pixel-wise MSE error is {} (Range 0-8 for 8 points)".format(np.mean(ious), np.mean(mse)))

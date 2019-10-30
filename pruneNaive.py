@@ -169,7 +169,7 @@ model.summary()
 if len(params.loadModel):
     # saved_model_path = params.loadModel
     # model.load_weights(saved_model_path)
-  model = tf.keras.models.load_model(saved_model_path)
+  model = tf.keras.models.load_model(params.loadModel)
 
 optimizer = tf.keras.optimizers.Adam()
 model.compile(optimizer=optimizer, 
