@@ -53,8 +53,8 @@ datagen_kw = dict(rescale=1./255,
                   horizontal_flip=horizontal_flip,
                   vertical_flip=vertical_flip,
                   featurewise_center=False)
-test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(datagen_kw)
-datagen = tf.keras.preprocessing.image.ImageDataGenerator(datagen_kw)
+test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(**datagen_kw)
+datagen = tf.keras.preprocessing.image.ImageDataGenerator(**datagen_kw)
 
 
 # mobilenetv2 input size

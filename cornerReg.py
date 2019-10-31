@@ -150,7 +150,7 @@ corners = layers.Concatenate()([tl_regression, tr_regression, br_regression, bl_
 
 model = tf.keras.Model(inp, corners)
 model.summary()
-
+exit()
 optimizer = tf.keras.optimizers.Adam()
 model.compile(optimizer=optimizer, 
               loss='mean_squared_error',
