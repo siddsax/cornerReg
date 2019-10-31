@@ -1,4 +1,5 @@
 name=$1
+#sudo mount /dev/xvdf /data
 #python cornerReg.py --epochs=$2 --datadir /data/card_synthetic_dataset_v2
 #mkdir models/$name
 #mv models/saved_modelPB_* models/$name

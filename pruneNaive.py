@@ -113,7 +113,7 @@ pruning_params = {
 }
 
 
-base_net = tf.keras.applications.MobileNetV2(input_shape=(image_wh, image_wh, 3), alpha = .35, 
+base_net = tf.keras.applications.MobileNetV2(input_shape=(image_wh, image_wh, 3), #alpha = .35, 
                                                include_top=False)
 base_net.trainable = True #@param {type:"boolean"}
 # is_train = True #@param {type:"boolean"}
@@ -126,18 +126,18 @@ useBatchNormalization = True #@param {type:"boolean"}
 useCoordConv = True #@param {type:"boolean"}
 if useCoordConv:
   print("-"*100)
-  coord_conv_size = 256 #@param {type:"integer"}
-  encoder = sparsity.prune_low_magnitude(layers.Conv2D(coord_conv_size, kernel_size=1, padding='valid'))(encoder)
+  bottleneck_size = 64 #@param {type:"integer"}
+  encoder = sparsity.prune_low_magnitude(layers.Conv2D(bottleneck_size, kernel_size=1, padding='valid'))(encoder)
   if useBatchNormalization:
     encoder = layers.BatchNormalization()(encoder)
   encoder = layers.ReLU()(encoder)
 
   encoder = CoordinateChannel2D()(encoder)
 
-encoder = sparsity.prune_low_magnitude(layers.Conv2D(256, kernel_size=3, padding='valid'), **pruning_params)(encoder)
-if useBatchNormalization:
-  encoder = layers.BatchNormalization()(encoder)
-encoder = layers.ReLU()(encoder)
+#encoder = sparsity.prune_low_magnitude(layers.Conv2D(256, kernel_size=3, padding='valid'), **pruning_params)(encoder)
+#if useBatchNormalization:
+#  encoder = layers.BatchNormalization()(encoder)
+#encoder = layers.ReLU()(encoder)
 
 coordinate_regression = layers.Dense(2, activation='sigmoid') # If our corners are in [0..1] range
 
@@ -181,27 +181,6 @@ callbacks = [
     sparsity.PruningSummaries(log_dir=params.logdir, profile_batch=0),
     CustomSaver(saveEpochs = params.epochs // 5)
 ]
-
-# pruned_model = tf.keras.Sequential([
-#     sparsity.prune_low_magnitude(
-#         l.Conv2D(32, 5, padding='same', activation='relu'),
-#         input_shape=input_shape,
-#         **pruning_params),
-#     l.MaxPooling2D((2, 2), (2, 2), padding='same'),
-#     l.BatchNormalization(),
-#     sparsity.prune_low_magnitude(
-#         l.Conv2D(64, 5, padding='same', activation='relu'), **pruning_params),
-#     l.MaxPooling2D((2, 2), (2, 2), padding='same'),
-#     l.Flatten(),
-#     sparsity.prune_low_magnitude(l.Dense(1024, activation='relu'),
-#                                  **pruning_params),
-#     l.Dropout(0.4),
-#     sparsity.prune_low_magnitude(l.Dense(num_classes, activation='softmax'),
-#                                  **pruning_params)
-# ])
-
-# pruned_model.summary()
-
 
 steps_per_epoch = train_generator.n // train_generator.batch_size
 print('Steps per epoch: ', steps_per_epoch)
