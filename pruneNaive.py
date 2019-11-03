@@ -16,6 +16,7 @@ from tensorflow.keras import backend as K
 from coord import CoordinateChannel2D
 import argparse
 import tempfile
+from networks import *
 
 class CustomSaver(tf.keras.callbacks.Callback):
   def __init__(self, saveEpochs):
@@ -24,15 +25,28 @@ class CustomSaver(tf.keras.callbacks.Callback):
   def on_epoch_end(self, epoch, logs={}):
     if epoch % self.saveEpochs == 0:  # or save after some epoch, each k-th epoch etc.
       final_model = sparsity.strip_pruning(self.model)
-      final_model.save("./models/saved_modelPB_pr_{}".format(epoch))
+      if params.sparsity:
+        final_model.save("./models/saved_model_pr_{}".format(epoch))
+        final_model.save_weights("./models/saved_model_pr_{}/weights.ckpt".format(epoch))
+      else:
+        final_model.save("./models/saved_model_{}".format(epoch))
+        final_model.save_weights("./models/saved_model_{}/weights.ckpt".format(epoch))
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--epochs', dest='epochs', type=int, default=20, help='number of epochs to run')
 parser.add_argument('--loadModel', dest='loadModel', type=str, default='', help='if loading a preexisting model')
 parser.add_argument('--datadir', dest='dataset_directory', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
 parser.add_argument('--logdir', dest='logdir', type=str, default='./logs', help='if loading a preexisting model')
-params = parser.parse_args()
+parser.add_argument('--bottleneck_size', dest='bottleneck_size', type=int, default=64, help='size of bottleneck layer')
+parser.add_argument('--useCoordConv', dest='useCoordConv', action='store_false', help='using coord convolutions or normal convolutions')
+parser.add_argument('--useBatchNormalization', dest='useBatchNormalization', action='store_false', help='using batch norm or not')
+parser.add_argument('--Btrainable', dest='Btrainable', action='store_false', help='if basenet is trainable or not')
+parser.add_argument('--alpha', dest='alpha', type=int, default=1.0, help='width of mobilenet, only needed if mobilenet is used. Valid options are\
+                                                                          .35, .5, 1.0, 2.0')
+parser.add_argument('--sparsity', dest='sparsity', action='store_false', help='if basenet is trainable or not')
+parser.add_argument('--baseNet', dest='baseNet', type=str, default='mobileNetV2', help='model type to load. Options MobileNetV2')
 
+params = parser.parse_args()
 
 dataset_directory = params.dataset_directory
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
@@ -51,15 +65,11 @@ labels_txt = '\n'.join(labels)
 with open('labels.txt', 'w') as f:
   f.write(labels_txt)
 
-horizontal_flip = False #@param {type:"boolean"}
-vertical_flip = False#@param {type:"boolean"}
-# TODO add augmentation params
-
-datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=horizontal_flip, vertical_flip=vertical_flip)
-test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=horizontal_flip, vertical_flip=vertical_flip)
+datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
+test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
 # mobilenetv2 input size
-image_wh = 224
-target_size = (image_wh, image_wh)
+params.image_wh = 224
+target_size = (params.image_wh, params.image_wh)
 train_len = len(df) // 2
 valid_len = len(df) * 3 // 4
 seed = 1
@@ -104,72 +114,30 @@ print("Label batch shape: ", label_batch.shape)
 
 end_step = np.ceil(1.0 * train_len / batch_size).astype(np.int32) * params.epochs
 
-pruning_params = {
-      'pruning_schedule': sparsity.PolynomialDecay(initial_sparsity=0.50,
-                                                   final_sparsity=0.90,
-                                                   begin_step=1600,
-                                                   end_step=end_step,
-                                                   frequency=100)
-}
+if params.sparsity:
+  pruning_params = {
+        'pruning_schedule': sparsity.PolynomialDecay(initial_sparsity=0.50,
+                                                    final_sparsity=0.90,
+                                                    begin_step=end_step//4,
+                                                    end_step=end_step,
+                                                    frequency=100)
+  }
+else:
+  pruning_params = {
+        'pruning_schedule': sparsity.PolynomialDecay(initial_sparsity=0,
+                                                    final_sparsity=0,
+                                                    begin_step=0,
+                                                    end_step=end_step,
+                                                    frequency=100)
+  }
 
-
-base_net = tf.keras.applications.MobileNetV2(input_shape=(image_wh, image_wh, 3), #alpha = .35, 
-                                               include_top=False)
-base_net.trainable = True #@param {type:"boolean"}
-# is_train = True #@param {type:"boolean"}
-
-# TODO
-inp = tf.keras.Input(shape = (image_wh, image_wh, 3));
-encoder = base_net(inp)
-
-useBatchNormalization = True #@param {type:"boolean"}
-useCoordConv = True #@param {type:"boolean"}
-if useCoordConv:
-  print("-"*100)
-  bottleneck_size = 64 #@param {type:"integer"}
-  encoder = sparsity.prune_low_magnitude(layers.Conv2D(bottleneck_size, kernel_size=1, padding='valid'), **pruning_params)(encoder)
-  if useBatchNormalization:
-    encoder = layers.BatchNormalization()(encoder)
-  encoder = layers.ReLU()(encoder)
-
-  encoder = CoordinateChannel2D()(encoder)
-
-#encoder = sparsity.prune_low_magnitude(layers.Conv2D(256, kernel_size=3, padding='valid'), **pruning_params)(encoder)
-#if useBatchNormalization:
-#  encoder = layers.BatchNormalization()(encoder)
-#encoder = layers.ReLU()(encoder)
-
-coordinate_regression = layers.Dense(2, activation='sigmoid') # If our corners are in [0..1] range
-
-tl_regression = sparsity.prune_low_magnitude(layers.Conv2D(32, kernel_size=3, padding='valid', activation='relu'), **pruning_params)(encoder)
-tl_regression = layers.GlobalMaxPooling2D()(tl_regression)
-tl_regression = layers.Flatten()(tl_regression)
-tl_regression = coordinate_regression(tl_regression)
-
-tr_regression = sparsity.prune_low_magnitude(layers.Conv2D(32, kernel_size=3, padding='valid', activation='relu'), **pruning_params)(encoder)
-tr_regression = layers.GlobalMaxPooling2D()(tr_regression)
-tr_regression = layers.Flatten()(tr_regression)
-tr_regression = coordinate_regression(tr_regression)
-
-br_regression = sparsity.prune_low_magnitude(layers.Conv2D(32, kernel_size=3, padding='valid', activation='relu'), **pruning_params)(encoder)
-br_regression = layers.GlobalMaxPooling2D()(br_regression)
-br_regression = layers.Flatten()(br_regression)
-br_regression = coordinate_regression(br_regression)
-
-bl_regression = sparsity.prune_low_magnitude(layers.Conv2D(32, kernel_size=3, padding='valid', activation='relu'), **pruning_params)(encoder)
-bl_regression = layers.GlobalMaxPooling2D()(bl_regression)
-bl_regression = layers.Flatten()(bl_regression)
-bl_regression = coordinate_regression(bl_regression)
-
-corners = layers.Concatenate()([tl_regression, tr_regression, br_regression, bl_regression])
-
-model = tf.keras.Model(inp, corners)
-model.summary()
+modelInit = Model(pruning_params, params)
+model = modelInit.build()
 
 if len(params.loadModel):
-    # saved_model_path = params.loadModel
-    # model.load_weights(saved_model_path)
-  model = tf.keras.models.load_model(params.loadModel)
+  model.load_weights(params.loadModel)
+
+#  = tf.keras.models.load_model()
 
 optimizer = tf.keras.optimizers.Adam()
 model.compile(optimizer=optimizer, 
@@ -183,50 +151,10 @@ callbacks = [
 ]
 
 steps_per_epoch = train_generator.n // train_generator.batch_size
-print('Steps per epoch: ', steps_per_epoch)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+# model.layers[1].trainable = False
 history = model.fit_generator(generator=train_generator,
                     steps_per_epoch=steps_per_epoch,
                     epochs=params.epochs,
                     callbacks=callbacks
                     )
-
-
-# for epoch in range(params.epochs):
-
-#     history = model.fit_generator(generator=train_generator,
-#                         steps_per_epoch=steps_per_epoch,
-#                         epochs=1,
-#                         callbacks=callbacks
-#                         )
-
-#     if epoch % 5 == 0:
-
-#       print("save model")
-#       saved_model_dir = './models/saved_modelPB_pr_' + str(epoch) + '.h5'
-#       # tf.saved_model.save(model, saved_model_dir)
-#       # _, checkpoint_file = tempfile.mkstemp('.h5')
-#       print('Saving pruned model to: ', saved_model_dir)
-#       tf.keras.models.save_model(model, saved_model_dir, include_optimizer=True)
-
-#       # Get IOU on validation data
-
-#       val_gen = valid_generator
-#       val_gen.batch_size = 1
-#       val_gen.reset()
-#       val_steps = val_gen.n // val_gen.batch_size
-#       val_gen.reset()
-#       pred = model.predict_generator(val_gen,
-#                                     steps=val_steps,
-#                                     verbose=1)
-#       predictions = pred
-#       columns = labels
-#       results = pd.DataFrame(predictions, columns=columns)
-#       results["Filenames"] = valid_generator.filenames
-#       ordered_cols = ["Filenames"] + columns
-#       results = results[ordered_cols]#To get the same column order
-
-#       ious = np.array([getIOU(A, B) for A, B in zip(results.values[:, 1:], df[train_len:valid_len].values[:, 1:])])
-#       print(ious.mean())
-

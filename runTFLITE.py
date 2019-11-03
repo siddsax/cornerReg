@@ -26,7 +26,7 @@ and then tests the model on 'dummy' data which has the shape of the input data.
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--datadir', dest='dataset_directory', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
-parser.add_argument('--modelPath', dest='model_path', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
+parser.add_argument('--modelPath', dest='model_path', type=str, default='./lite_model.tflite', help='if loading a preexisting model')
 params = parser.parse_args()
 
 
@@ -109,8 +109,6 @@ for i in range(len(test_generator)):
     mse.append(mean_squared_error(label, output_data))
 
     results.append(output_data)
-    # if i == 5:
-    #   break
 
 # results = np.array(results)
 # plt.figure(figsize=(8, 8))
