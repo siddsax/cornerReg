@@ -1,5 +1,6 @@
 name=$1
-python pruneNaive.py --epochs=$2 --datadir /data/card_synthetic_dataset_v2
+python pruneNaive.py --epochs=$2 --datadir /data/card_synthetic_dataset_v2 --Btrainable --sparsity
+python pruneNaive.py --epochs=$3 --datadir /data/card_synthetic_dataset_v2 --loadModel models/saved_modelPB_16/weights.ckpt
 mkdir models/$name
 mv models/saved_modelPB_* models/$name
 mkdir outs
