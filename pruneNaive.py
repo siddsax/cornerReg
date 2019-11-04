@@ -23,14 +23,15 @@ class CustomSaver(tf.keras.callbacks.Callback):
     self.saveEpochs = saveEpochs
 
   def on_epoch_end(self, epoch, logs={}):
-    if epoch % self.saveEpochs == 0:  # or save after some epoch, each k-th epoch etc.
+ 
+    if (epoch + 1) % self.saveEpochs == 0:  # or save after some epoch, each k-th epoch etc.
       final_model = sparsity.strip_pruning(self.model)
       if params.sparsity:
-        final_model.save("./models/saved_model_pr_{}".format(epoch))
-        final_model.save_weights("./models/saved_model_pr_{}/weights.ckpt".format(epoch))
+        final_model.save("./models/saved_model_pr_{}".format(epoch + 1))
+        final_model.save_weights("./models/saved_model_pr_{}/weights.ckpt".format(epoch + 1))
       else:
-        final_model.save("./models/saved_model_{}".format(epoch))
-        final_model.save_weights("./models/saved_model_{}/weights.ckpt".format(epoch))
+        final_model.save("./models/saved_model_{}".format(epoch + 1))
+        final_model.save_weights("./models/saved_model_{}/weights.ckpt".format(epoch + 1))
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--epochs', dest='epochs', type=int, default=20, help='number of epochs to run')
@@ -124,9 +125,9 @@ if params.sparsity:
   }
 else:
   pruning_params = {
-        'pruning_schedule': sparsity.PolynomialDecay(initial_sparsity=0,
-                                                    final_sparsity=0,
-                                                    begin_step=0,
+        'pruning_schedule': sparsity.PolynomialDecay(initial_sparsity=0.0,
+                                                    final_sparsity=0.0,
+                                                    begin_step=1,
                                                     end_step=end_step,
                                                     frequency=100)
   }
