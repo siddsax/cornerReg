@@ -140,7 +140,7 @@ if len(params.loadModel):
 
 #  = tf.keras.models.load_model()
 
-optimizer = tf.keras.optimizers.Adam()
+optimizer = tf.keras.optimizers.Adam()#learning_rate=0.01)
 model.compile(optimizer=optimizer, 
               loss='mean_squared_error',
               metrics=['mae', 'mse'])

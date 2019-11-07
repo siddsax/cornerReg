@@ -1,7 +1,7 @@
 name=$1
 sudo mount /dev/xvdf /data
-python pruneNaive.py --epochs=$2 --datadir /data/card_synthetic_dataset_v2 --Btrainable --sparsity
-python pruneNaive.py --epochs=$3 --datadir /data/card_synthetic_dataset_v2 --loadModel models/saved_model_35/weights.ckpt
+python pruneNaive.py --epochs=$2 --datadir /data/card_synthetic_dataset_v2
+#python pruneNaive.py --epochs=$3 --datadir /data/card_synthetic_dataset_v2 --loadModel models/saved_model_35/weights.ckpt
 mkdir models/$name
 mv models/saved_model_* models/$name
 mkdir outs
