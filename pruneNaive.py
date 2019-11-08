@@ -17,6 +17,8 @@ from coord import CoordinateChannel2D
 import argparse
 import tempfile
 from networks import *
+import albumentations as albu
+from dataHelpers import generator, create_transformer
 
 class CustomSaver(tf.keras.callbacks.Callback):
   def __init__(self, saveEpochs):
@@ -66,9 +68,6 @@ labels_txt = '\n'.join(labels)
 with open('labels.txt', 'w') as f:
   f.write(labels_txt)
 
-datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
-test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
-# mobilenetv2 input size
 params.image_wh = 224
 target_size = (params.image_wh, params.image_wh)
 train_len = len(df) // 2
@@ -77,16 +76,29 @@ seed = 1
 batch_size = 16 #@param {type:"integer"}
 batch_size_valid = 8
 
-train_generator = datagen.flow_from_dataframe(
-    dataframe=df[:train_len],
-    directory=dataset_directory,
-    x_col=filenames,
-    y_col=labels,
-    batch_size=batch_size,
-    seed=seed,
-    shuffle=True,
-    class_mode="other",
-    target_size=target_size)
+
+transformer = create_transformer([albu.VerticalFlip(p=.5), 
+                                  albu.HorizontalFlip(p=0.5),
+                                  albu.Flip(p=0.5),
+                                  # albu.ShiftScaleRotate(p=0.5),
+                                  albu.OneOf([albu.HueSaturationValue(p=0.5), albu.RGBShift(p=0.7)], p=1),
+                                  albu.RandomBrightnessContrast(p=0.5)
+                                ])
+
+train_generator = generator(df[:train_len], params.image_wh, batch_size, dataset_directory, normalize = True, transformer = transformer)
+test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
+
+# train_generator = datagen.flow_from_dataframe(
+#     dataframe=df[:train_len],
+#     directory=dataset_directory,
+#     x_col=filenames,
+#     y_col=labels,
+#     batch_size=batch_size,
+#     seed=seed,
+#     shuffle=True,
+#     class_mode="other",
+#     target_size=target_size)
+
 valid_generator = test_datagen.flow_from_dataframe(
     dataframe=df[train_len:valid_len],
     directory=dataset_directory,
@@ -97,6 +109,7 @@ valid_generator = test_datagen.flow_from_dataframe(
     shuffle=False,
     class_mode="other",
     target_size=target_size)
+
 test_generator = test_datagen.flow_from_dataframe(
     dataframe=df[valid_len:],
     directory=dataset_directory,
@@ -108,7 +121,7 @@ test_generator = test_datagen.flow_from_dataframe(
     class_mode="other",
     target_size=target_size)
 
-image_batch, label_batch = train_generator[0]
+image_batch, label_batch = next(train_generator)
 print("Image batch shape: ", image_batch.shape)
 print("Label batch shape: ", label_batch.shape)
 
@@ -151,7 +164,7 @@ callbacks = [
     CustomSaver(saveEpochs = params.epochs // 5)
 ]
 
-steps_per_epoch = train_generator.n // train_generator.batch_size
+steps_per_epoch = len(df) // batch_size
 
 # model.layers[1].trainable = False
 history = model.fit_generator(generator=train_generator,
