@@ -53,8 +53,6 @@ params = parser.parse_args()
 
 dataset_directory = params.dataset_directory
 
-lst = [x[0].split('/')[-1] for x in os.walk(dataset_directory)]
-
 params.image_wh = 224
 target_size = (params.image_wh, params.image_wh)
 # valid_len = len(df) * 3 // 4
@@ -62,12 +60,17 @@ seed = 1
 batch_size = 16 #@param {type:"integer"}
 batch_size_valid = 8
 
+lst = [x[0].split('/')[-1] for x in os.walk(dataset_directory)]
+
 if 'train' in lst:
   dataset_directoryTR = dataset_directory + '/train'
   dataset_directoryTE = dataset_directory + '/test'
   
   trainDF = pd.read_csv(os.path.join(dataset_directoryTR, 'labels.csv'), header='infer')
   testDF = pd.read_csv(os.path.join(dataset_directoryTE, 'labels.csv'), header='infer')
+
+  trainDF.drop(columns=['glare', 'fld_mask'], inplace=True)
+  testDF.drop(columns=['glare', 'fld_mask'], inplace=True)
 
   train_len = len(trainDF)
   filenames = list(testDF)[0]

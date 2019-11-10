@@ -32,38 +32,24 @@ params = parser.parse_args()
 
 dataset_directory = params.dataset_directory #'./card_synthetic_dataset'
 model_path = params.model_path
+
+lst = [x[0].split('/')[-1] for x in os.walk(dataset_directory)]
+if 'train' in lst:
+  dataset_directory += '/test'
+
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
-show_n_records = 3 #@param {type:"integer"}
-# drop glare for corners regression only
 df.drop(columns=['glare'], inplace=True)
-print(df[:show_n_records])
-print(df.columns)
 
 labels = list(df)[1:]
-print(labels)
 filenames = list(df)[0]
 
-horizontal_flip = False #@param {type:"boolean"}
-vertical_flip = False#@param {type:"boolean"}
-# TODO add augmentation params
+test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
 
-# test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=horizontal_flip, vertical_flip=vertical_flip)
-
-datagen_kw = dict(rescale=1./255, 
-                  horizontal_flip=horizontal_flip,
-                  vertical_flip=vertical_flip,
-                  featurewise_center=False)
-test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(**datagen_kw)
-datagen = tf.keras.preprocessing.image.ImageDataGenerator(**datagen_kw)
-
-
-# mobilenetv2 input size
 image_wh = 224
 target_size = (image_wh, image_wh)
 train_len = len(df) // 2
 valid_len = len(df) * 3 // 4
 seed = 1
-
 
 # Load TFLite model and allocate tensors.
 interpreter = tf.lite.Interpreter(model_path=model_path)
@@ -112,6 +98,9 @@ for i in range(len(test_generator)):
     if i ==50:
        break
 
+print("The Mean IOU is {} (Range 0-1) and the pixel-wise MSE error is {} (Range 0-8 for 8 points)".format(np.mean(ious), np.mean(mse)))
+
+
 # results = np.array(results)
 # plt.figure(figsize=(8, 8))
 # plt.subplots_adjust(hspace=0.5)
@@ -137,5 +126,3 @@ for i in range(len(test_generator)):
 #   plt.axis('off')
 # _ = plt.suptitle("Test images")
 # plt.show()
-
-print("The Mean IOU is {} (Range 0-1) and the pixel-wise MSE error is {} (Range 0-8 for 8 points)".format(np.mean(ious), np.mean(mse)))
