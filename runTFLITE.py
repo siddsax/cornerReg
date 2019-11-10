@@ -27,8 +27,8 @@ and then tests the model on 'dummy' data which has the shape of the input data.
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--datadir', dest='dataset_directory', type=str, default='./card_synthetic_dataset', help='if loading a preexisting model')
 parser.add_argument('--modelPath', dest='model_path', type=str, default='./lite_model.tflite', help='if loading a preexisting model')
+parser.add_argument('--noNormalize', dest='normalize', action='store_false',  help='normalizing or not')
 params = parser.parse_args()
-
 
 dataset_directory = params.dataset_directory #'./card_synthetic_dataset'
 model_path = params.model_path
@@ -43,6 +43,10 @@ df.drop(columns=['glare', 'fld_mask', 'punch'], inplace=True)
 labels = list(df)[1:]
 filenames = list(df)[0]
 
+if params.normalize:
+  factor = 1.0/255
+else:
+  factor = 1.0
 test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
 
 image_wh = 224

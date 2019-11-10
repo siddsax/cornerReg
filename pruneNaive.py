@@ -49,7 +49,7 @@ parser.add_argument('--alpha', dest='alpha', type=int, default=1.0, help='width 
 parser.add_argument('--sparsity', dest='sparsity', action='store_false', help='if basenet is trainable or not')
 parser.add_argument('--baseNet', dest='baseNet', type=str, default='mobileNetV2', help='model type to load. Options MobileNetV2')
 parser.add_argument('--albumentations', dest='albumentations', action='store_false', help='use albumentations or not')
-
+parser.add_argument('--noNormalize', dest='normalize', action='store_false',  help='normalizing or not')
 params = parser.parse_args()
 
 dataset_directory = params.dataset_directory
@@ -106,8 +106,9 @@ if params.albumentations:
 else:
   transformer = create_transformer([])
 
-train_generator = generator(trainDF, params.image_wh, batch_size, dataset_directoryTR, normalize = True, transformer = transformer)
-test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
+factor = 1/255. if params.normalize else 1.0
+train_generator = generator(trainDF, params.image_wh, batch_size, dataset_directoryTR, normalize = params.normalize, transformer = transformer)
+test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=factor, horizontal_flip=False, vertical_flip=False)
 
 # train_generator = datagen.flow_from_dataframe(
 #     dataframe=df[:train_len],

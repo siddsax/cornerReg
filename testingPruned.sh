@@ -1,10 +1,10 @@
 name=$1
 sudo mount /dev/xvdf /data
-#python pruneNaive.py --epochs=$3 --datadir=$2 --albumentations
+#python pruneNaive.py --epochs=$3 --datadir=$2 --albumentations --noNormalize
 #python pruneNaive.py --epochs=$4 --datadir $2 --loadModel models/saved_model_35/weights.ckpt
-mkdir models/$name
-mv models/saved_model_* models/$name
-mkdir outs
+#mkdir models/$name
+#mv models/saved_model_* models/$name
+#mkdir outs
 rm outs/$name.txt
 rm -rf models/$name/tfliteModels
 for file in "models/$name"/*
@@ -16,7 +16,7 @@ do
         python loadSave.py $file
         echo "Testing on $file" >> outs/$name.txt
         mv lite_model.tflite lite_model_pr.tflite
-        python runTFLITE.py --modelPath lite_model_pr.tflite --datadir $2 |& tee  >(tail -1 >> outs/$name.txt)
+        python runTFLITE.py --modelPath lite_model_pr.tflite --noNormalize --datadir $2 |& tee  >(tail -1 >> outs/$name.txt)
         echo "------------------------------------------------------" >> outs/$name.txt
         mv lite_model_pr.tflite $file.tflite
     fi
