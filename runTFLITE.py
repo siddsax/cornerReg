@@ -38,7 +38,7 @@ if 'train' in lst:
   dataset_directory += '/test'
 
 df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
-df.drop(columns=['glare'], inplace=True)
+df.drop(columns=['glare', 'fld_mask', 'punch'], inplace=True)
 
 labels = list(df)[1:]
 filenames = list(df)[0]
