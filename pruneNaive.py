@@ -48,6 +48,7 @@ parser.add_argument('--alpha', dest='alpha', type=int, default=1.0, help='width 
                                                                           .35, .5, 1.0, 2.0')
 parser.add_argument('--sparsity', dest='sparsity', action='store_false', help='if basenet is trainable or not')
 parser.add_argument('--baseNet', dest='baseNet', type=str, default='mobileNetV2', help='model type to load. Options MobileNetV2')
+parser.add_argument('--albumentations', dest='albumentations', action='store_false', help='use albumentations or not')
 
 params = parser.parse_args()
 
@@ -94,14 +95,16 @@ else:
 
   steps_per_epoch = len(df) // batch_size
 
-
-transformer = create_transformer([albu.VerticalFlip(p=.5), 
+if params.albumentations:
+  transformer = create_transformer([
+                                  albu.VerticalFlip(p=.5), 
                                   albu.HorizontalFlip(p=0.5),
                                   albu.Flip(p=0.5),
-                                  # albu.ShiftScaleRotate(p=0.5),
                                   albu.OneOf([albu.HueSaturationValue(p=0.5), albu.RGBShift(p=0.7)], p=1),
                                   albu.RandomBrightnessContrast(p=0.5)
-                                ])
+                                  ])
+else:
+  transformer = create_transformer([])
 
 train_generator = generator(trainDF, params.image_wh, batch_size, dataset_directoryTR, normalize = True, transformer = transformer)
 test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
