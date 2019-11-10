@@ -69,8 +69,8 @@ if 'train' in lst:
   trainDF = pd.read_csv(os.path.join(dataset_directoryTR, 'labels.csv'), header='infer')
   testDF = pd.read_csv(os.path.join(dataset_directoryTE, 'labels.csv'), header='infer')
 
-  trainDF.drop(columns=['glare', 'fld_mask'], inplace=True)
-  testDF.drop(columns=['glare', 'fld_mask'], inplace=True)
+  trainDF.drop(columns=['glare', 'fld_mask', 'punch'], inplace=True)
+  testDF.drop(columns=['glare', 'fld_mask', 'punch'], inplace=True)
 
   train_len = len(trainDF)
   filenames = list(testDF)[0]
@@ -179,7 +179,7 @@ model.compile(optimizer=optimizer,
 callbacks = [
     sparsity.UpdatePruningStep(),
     sparsity.PruningSummaries(log_dir=params.logdir, profile_batch=0),
-    CustomSaver(saveEpochs = params.epochs // 5)
+    CustomSaver(saveEpochs = params.epochs // 10)
 ]
 
 # model.layers[1].trainable = False

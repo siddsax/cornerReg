@@ -79,6 +79,7 @@ ious = []
 results = []
 labels = []
 mse = []
+rms = []
 for i in range(len(test_generator)):
 
     if i % 100 == 0:
@@ -93,12 +94,13 @@ for i in range(len(test_generator)):
     output_data = interpreter.get_tensor(output_details[0]['index'])
     ious.append(getIOU(label, output_data))
     mse.append(mean_squared_error(label, output_data))
+    rms.append(np.max((label - output_data)**2))
 
     results.append(output_data)
-    if i ==50:
+    if i ==100:
        break
 
-print("The Mean IOU is {} (Range 0-1) and the pixel-wise MSE error is {} (Range 0-8 for 8 points)".format(np.mean(ious), np.mean(mse)))
+print("The Mean-IOU is {} (Range 0-1) point-wise MSE  is {} (Range 0-8 for 8 points) and max point RMS error is {} (Range 0-1)".format(np.mean(ious), np.mean(mse), np.mean(rms)))
 
 
 # results = np.array(results)
