@@ -52,29 +52,44 @@ parser.add_argument('--baseNet', dest='baseNet', type=str, default='mobileNetV2'
 params = parser.parse_args()
 
 dataset_directory = params.dataset_directory
-df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
-show_n_records = 3 #@param {type:"integer"}
-# drop glare for corners regression only
-df.drop(columns=['glare'], inplace=True)
-print(df[:show_n_records])
-print(df.columns)
 
-labels = list(df)[1:]
-print(labels)
-filenames = list(df)[0]
-print("Filenames column name:", filenames)
-labels_txt = '\n'.join(labels)
-
-with open('labels.txt', 'w') as f:
-  f.write(labels_txt)
+lst = [x[0].split('/')[-1] for x in os.walk(dataset_directory)]
 
 params.image_wh = 224
 target_size = (params.image_wh, params.image_wh)
-train_len = len(df) // 2
-valid_len = len(df) * 3 // 4
+# valid_len = len(df) * 3 // 4
 seed = 1
 batch_size = 16 #@param {type:"integer"}
 batch_size_valid = 8
+
+if 'train' in lst:
+  dataset_directoryTR = dataset_directory + '/train'
+  dataset_directoryTE = dataset_directory + '/test'
+  
+  trainDF = pd.read_csv(os.path.join(dataset_directoryTR, 'labels.csv'), header='infer')
+  testDF = pd.read_csv(os.path.join(dataset_directoryTE, 'labels.csv'), header='infer')
+
+  train_len = len(trainDF)
+  filenames = list(testDF)[0]
+  labels = list(trainDF)[1:]
+
+  steps_per_epoch = len(trainDF) // batch_size
+
+else:
+  df = pd.read_csv(os.path.join(dataset_directory, 'labels.csv'), header='infer')
+  df.drop(columns=['glare'], inplace=True)
+
+  labels = list(df)[1:]
+  filenames = list(df)[0]
+  train_len = len(df) // 2
+
+  trainDF = df[:train_len]
+  testDF = df[valid_len:]
+
+  dataset_directoryTR = dataset_directory
+  dataset_directoryTE = dataset_directory
+
+  steps_per_epoch = len(df) // batch_size
 
 
 transformer = create_transformer([albu.VerticalFlip(p=.5), 
@@ -85,7 +100,7 @@ transformer = create_transformer([albu.VerticalFlip(p=.5),
                                   albu.RandomBrightnessContrast(p=0.5)
                                 ])
 
-train_generator = generator(df[:train_len], params.image_wh, batch_size, dataset_directory, normalize = True, transformer = transformer)
+train_generator = generator(trainDF, params.image_wh, batch_size, dataset_directoryTR, normalize = True, transformer = transformer)
 test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_center=False, rescale=1./255, horizontal_flip=False, vertical_flip=False)
 
 # train_generator = datagen.flow_from_dataframe(
@@ -99,20 +114,20 @@ test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(featurewise_cente
 #     class_mode="other",
 #     target_size=target_size)
 
-valid_generator = test_datagen.flow_from_dataframe(
-    dataframe=df[train_len:valid_len],
-    directory=dataset_directory,
-    x_col=filenames,
-    y_col=labels,
-    batch_size=batch_size_valid,
-    seed=seed,
-    shuffle=False,
-    class_mode="other",
-    target_size=target_size)
+# valid_generator = test_datagen.flow_from_dataframe(
+#     dataframe=df[train_len:valid_len],
+#     directory=dataset_directory,
+#     x_col=filenames,
+#     y_col=labels,
+#     batch_size=batch_size_valid,
+#     seed=seed,
+#     shuffle=False,
+#     class_mode="other",
+#     target_size=target_size)
 
 test_generator = test_datagen.flow_from_dataframe(
-    dataframe=df[valid_len:],
-    directory=dataset_directory,
+    dataframe=testDF,
+    directory=dataset_directoryTE,
     x_col=filenames,
     y_col=labels,
     batch_size=1,
@@ -163,8 +178,6 @@ callbacks = [
     sparsity.PruningSummaries(log_dir=params.logdir, profile_batch=0),
     CustomSaver(saveEpochs = params.epochs // 5)
 ]
-
-steps_per_epoch = len(df) // batch_size
 
 # model.layers[1].trainable = False
 history = model.fit_generator(generator=train_generator,
