@@ -69,7 +69,7 @@ input_data = np.array(np.random.random_sample(input_shape), dtype=np.float32)
 
 
 test_generator = test_datagen.flow_from_dataframe(
-    dataframe=df[valid_len:],
+    dataframe=df,
     directory=dataset_directory,
     x_col=filenames,
     y_col=labels,
