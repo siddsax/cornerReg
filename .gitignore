@@ -3,6 +3,7 @@ idclass
 logs
 card_synthetic_dataset_v1
 models
+model_*
 card_synthetic_dataset_v2
 card_*
 __py*
