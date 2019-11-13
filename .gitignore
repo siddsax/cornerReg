@@ -4,7 +4,7 @@ logs
 card_synthetic_dataset_v1
 models
 card_synthetic_dataset_v2
-card_synthetic_dataset
+card_*
 __py*
 saved_mod*
 *_2*

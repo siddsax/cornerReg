@@ -53,7 +53,7 @@ class Model():
                 encoder = layers.BatchNormalization()(encoder)
             encoder = layers.ReLU()(encoder)
             encoder = CoordinateChannel2D()(encoder)
-            coordinate_regression = layers.Dense(2, activation='sigmoid') # If our corners are in [0..1] range
+            coordinate_regression = layers.Dense(2)#, activation='sigmoid') # If our corners are in [0..1] range
 
             tl_regression = sparsity.prune_low_magnitude(layers.Conv2D(32, kernel_size=3, padding='valid', activation='relu'), **self.pruning_params)(encoder)
             tl_regression = layers.GlobalMaxPooling2D()(tl_regression)

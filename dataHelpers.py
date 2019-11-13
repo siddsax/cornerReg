@@ -15,23 +15,45 @@ def get_image(index, data, target_size, dataset_directory, normalize = True, tra
     labels = np.array([(data['tlx'].values[index], data['tly'].values[index]), (data['trx'].values[index], data['try'].values[index]), (data['brx'].values[index], data['bry'].values[index]), (data['blx'].values[index], data['bly'].values[index])])
     image = cv2.resize(image, target_size)
 
-    labels[labels>1] = 1
-    labels[labels<0] = 0
-    labels = labels*223
-
     if transformer is not None:
         try:
+            labels = labels*223
             outs = transformer(image = image, keypoints = labels)
+            labels = np.array(outs['keypoints'])
+            labels = labels/223.0
         except:
-            import pdb;pdb.set_trace()
+
+            labels = labels/223
+
+            labels = labels.reshape(8)
+            delta = np.zeros(8)
+            delta[labels>1] = labels[labels>1] - 1
+            labels[labels>1] = 1
+            delta[labels<0] = - labels[labels<0]
+            labels[labels<0] = 0
+            labels = labels.reshape((4,2))
+            
+            labels = labels*223
+            delta = delta*223
+
+            try:
+                outs = transformer(image = image, keypoints = labels)
+            except:
+                import pdb;pdb.set_trace()
+            
+            labels = np.array(outs['keypoints'])
+            labels = labels.reshape(8)
+            labels[labels == 0] -= delta[labels == 0]
+            labels[labels == 223] += delta[labels == 223]
+            labels = labels/223.0
+            
         image = outs['image']
-        labels = np.array(outs['keypoints'])
+        
     
     if normalize:
         image = image/255.0
     
-    labels = labels.reshape((8))/223
-    
+    labels = labels.reshape((8))
     return [image, labels]
     
 
@@ -48,19 +70,13 @@ def generator(data, image_wh, batch_size, dataset_directory, normalize = True, t
             y_train = np.empty([0, 8], dtype=np.int32)
 
             for i in current_batch:
-                # get an image and its corresponding color for an traffic light
                 [image, color] = get_image(i, data, (image_wh, image_wh), dataset_directory, normalize = normalize, transformer = transformer)
-                # Appending them to existing batch
                 x_train = np.append(x_train, [image], axis=0)
-                # import pdb;pdb.set_trace()
                 y_train = np.append(y_train, [color], axis=0)
 
-                # [image, color] = get_image(i, data, ())
+                # [image, color] = get_image(i, data, (image_wh, image_wh), dataset_directory, normalize = normalize)
                 # x_train = np.append(x_train, [image], axis=0)
                 # y_train = np.append(y_train, [color], axis=0)
-
-
-            # y_train = to_categorical(y_train, num_classes=NUM_CLASSES)
 
             yield (x_train, y_train)
 
