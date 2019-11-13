@@ -108,6 +108,12 @@ class Model():
             exit()
 
         model = tf.keras.Model(inp, corners)
-        model.summary()
+        stringlist = []
+        model.summary(print_fn=lambda x: stringlist.append(x))
+        short_model_summary = "\n".join(stringlist)
+        print(short_model_summary)
+        writeFile = open(self.params.saveName, 'a+')
+        writeFile.write(short_model_summary + "\n" + "*"*100)
+        writeFile.close()
 
         return model

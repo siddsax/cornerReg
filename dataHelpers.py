@@ -53,7 +53,10 @@ def get_image(index, data, target_size, dataset_directory, normalize = True, tra
     if normalize:
         image = image/255.0
     
-    labels = labels.reshape((8))
+    try:
+        labels = labels.reshape((8))
+    except:
+        import pdb;pdb.set_trace()
     return [image, labels]
     
 

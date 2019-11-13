@@ -19,6 +19,7 @@ import tempfile
 from networks import *
 import albumentations as albu
 from dataHelpers import generator, create_transformer
+import datetime
 
 class CustomSaver(tf.keras.callbacks.Callback):
   def __init__(self, saveEpochs):
@@ -48,15 +49,23 @@ parser.add_argument('--alpha', dest='alpha', type=int, default=1.0, help='width 
                                                                           .35, .5, 1.0, 2.0')
 parser.add_argument('--sparsity', dest='sparsity', action='store_false', help='if basenet is trainable or not')
 parser.add_argument('--baseNet', dest='baseNet', type=str, default='mobileNetV2', help='model type to load. Options MobileNetV2')
-parser.add_argument('--albumentations', dest='albumentations', action='store_false', help='use albumentations or not')
+parser.add_argument('--noAlbumentations', dest='albumentations', action='store_false', help='use albumentations or not')
 parser.add_argument('--noNormalize', dest='normalize', action='store_false',  help='normalizing or not')
+parser.add_argument('--saveName', dest='saveName', default='',  help='place where to save model')
+
 params = parser.parse_args()
+
+if len(params.saveName) == 0:
+  params.saveName = 'model_' + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
+
+writeFile = open(params.saveName, 'w')
+writeFile.write(str(params) + "\n" + "*"*100)
+writeFile.close()
 
 dataset_directory = params.dataset_directory
 
 params.image_wh = 224
 target_size = (params.image_wh, params.image_wh)
-# valid_len = len(df) * 3 // 4
 seed = 1
 batch_size = 16 #@param {type:"integer"}
 batch_size_valid = 8
@@ -86,6 +95,7 @@ else:
   labels = list(df)[1:]
   filenames = list(df)[0]
   train_len = len(df) // 2
+  valid_len = len(df) * 3 // 4
 
   trainDF = df[:train_len]
   testDF = df[valid_len:]
@@ -99,7 +109,7 @@ if params.albumentations:
   transformer = create_transformer([
                                   albu.VerticalFlip(p=.5), 
                                   albu.HorizontalFlip(p=0.5),
-                                  albu.Flip(p=0.5),
+                                  # albu.Flip(p=0.5),
                                   albu.OneOf([albu.HueSaturationValue(p=0.5), albu.RGBShift(p=0.7)], p=1),
                                   albu.RandomBrightnessContrast(p=0.5)
                                   ])

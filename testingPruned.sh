@@ -1,11 +1,11 @@
 name=$1
 sudo mount /dev/xvdf /data
-#python pruneNaive.py --epochs=$3 --datadir=$2 --albumentations --noNormalize
-#python pruneNaive.py --epochs=$4 --datadir $2 --loadModel models/saved_model_35/weights.ckpt
-#mkdir models/$name
-#mv models/saved_model_* models/$name
-#mkdir outs
+mkdir outs
 rm outs/$name.txt
+python pruneNaive.py --epochs=$3 --datadir=$2 --albumentations --noNormalize --saveName outs/$name
+#python pruneNaive.py --epochs=$4 --datadir $2 --loadModel models/saved_model_35/weights.ckpt
+mkdir models/$name
+mv models/saved_model_* models/$name
 rm -rf models/$name/tfliteModels
 for file in "models/$name"/*
 do
