@@ -17,16 +17,16 @@ def get_image(index, data, target_size, dataset_directory, normalize = True, tra
         image = cv2.resize(image, target_size)
 
         if transformer is not None:
-            try:
+            if ((labels>1).any() or (labels <0).any()) == False:
                 labels = labels*223
                 outs = transformer(image = image, keypoints = labels)
                 labels = np.array(outs['keypoints'])
                 labels = labels/223.0
+                if len(labels) != 4:
+                    import pdb;pdb.set_trace()
                 labels = labels.reshape((8))
-            except:
-
+            else:
                 labels = labels/223
-
                 labels = labels.reshape(8)
                 delta = np.zeros(8)
                 delta[labels>1] = labels[labels>1] - 1
@@ -38,10 +38,7 @@ def get_image(index, data, target_size, dataset_directory, normalize = True, tra
                 labels = labels*223
                 delta = delta*223
 
-                try:
-                    outs = transformer(image = image, keypoints = labels)
-                except:
-                    import pdb;pdb.set_trace()
+                outs = transformer(image = image, keypoints = labels)
                 
                 labels = np.array(outs['keypoints'])
                 labels = labels.reshape(8)
@@ -58,7 +55,6 @@ def get_image(index, data, target_size, dataset_directory, normalize = True, tra
         if len(labels) == 8:
             return [image, labels]
         else:
-            # import pdb;pdb.set_trace()
             continue
 
 
