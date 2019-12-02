@@ -23,7 +23,6 @@ parser.add_argument('--datadir', dest='dataset_directory', type=str, default='./
 parser.add_argument('--modelPath', dest='model_path', type=str, default='./lite_model.tflite', help='if loading a preexisting model')
 parser.add_argument('--noNormalize', dest='normalize', action='store_false',  help='normalizing or not')
 parser.add_argument('--image_wh', dest='image_wh', type=int, default=224, help='input image width')
-parser.add_argument('--batch_size', dest='batch_size', type=int, default=16, help='batch size, dummy variable here')
 
 params = parser.parse_args()
 
