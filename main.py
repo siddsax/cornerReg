@@ -28,7 +28,7 @@ parser.add_argument('--Btrainable', dest='Btrainable', action='store_false', hel
 parser.add_argument('--alpha', dest='alpha', type=int, default=1.0, help='width of mobilenet, only needed if mobilenet is used. Valid options are\
                                                                           .35, .5, 1.0, 2.0')
 parser.add_argument('--noSparsity', dest='noSparsity', action='store_false', help='if true, pruning is not done')
-parser.add_argument('--baseNet', dest='baseNet', type=str, default='mobileNetV2', help='model type to load. Options MobileNetV2')
+parser.add_argument('--baseNet', dest='baseNet', type=str, default='MobileNetV2', help='model type to load. Options MobileNetV2')
 parser.add_argument('--noAlbumentations', dest='albumentations', action='store_false', help='use albumentations or not')
 parser.add_argument('--noNormalize', dest='normalize', action='store_false',  help='normalizing or not')
 parser.add_argument('--saveName', dest='saveName', default='',  help='place where to save model')
@@ -38,11 +38,11 @@ parser.add_argument('--batch_size', dest='batch_size', type=int, default=16, hel
 params = parser.parse_args()
 
 if params.baseNet == 'ResNet_Base':
-  from ResNet-Base import ResNet_Base as Model
+  from ResNet_Base import ResNet_Base as Model
 elif params.baseNet == 'MobileNetV2':
-  from MobileNet-Coord import MobileNet_Coord as Model
+  from MobileNet_Coord import MobileNet_Coord as Model
 else:
-  print("Error; Model not defined");exit()
+  print("Error; {} not defined".format(params.baseNet));exit()
 
 if len(params.saveName) == 0:
   params.saveName = 'model_' + datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
@@ -51,7 +51,7 @@ writeFile = open(params.saveName, 'w')
 writeFile.write(str(params) + "\n" + "*"*100)
 writeFile.close()
 
-train_generator, test_generator, end_step = getData(params)
+train_generator, test_generator, end_step, steps_per_epoch = getData(params)
 
 
 if params.noSparsity:
@@ -85,11 +85,11 @@ model.compile(optimizer=optimizer,
 callbacks = [
     sparsity.UpdatePruningStep(),
     sparsity.PruningSummaries(log_dir=params.logdir, profile_batch=0),
-    CustomSaver(saveEpochs = params.epochs // 10, params)
+    CustomSaver(saveEpochs = params.epochs // 10, params=params)
 ]
 
 history = model.fit_generator(generator=train_generator,
                     steps_per_epoch=steps_per_epoch,
-                    epochs=params.epochs,
+                    epochs=1,#params.epochs,
                     callbacks=callbacks
                     )

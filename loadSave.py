@@ -1,22 +1,13 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
 import tensorflow as tf
-# tf.compat.v1.disable_eager_execution()
-import pandas as pd
 import numpy as np
-import matplotlib.pylab as plt
-from matplotlib.patches import Polygon
-import itertools
-import os 
 import sys
-from coord import CoordinateChannel2D
+from tensorflow_model_optimization.sparsity import keras as sparsity
 
 sys.path.append('layers')
 sys.path.append('utils')
 sys.path.append('networks')
 
-from tensorflow_model_optimization.sparsity import keras as sparsity
 from coord import CoordinateChannel2D
-
 
 saved_model_path = sys.argv[1]
 optimize_lite_model = True

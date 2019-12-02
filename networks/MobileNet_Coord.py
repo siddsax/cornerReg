@@ -2,11 +2,10 @@
 import tensorflow as tf
 import numpy as np
 import sys
+from tensorflow_model_optimization.sparsity import keras as sparsity
 
 sys.path.append('../layers')
 sys.path.append('../utils')
-
-
 from tensorflow.keras import layers
 from tensorflow.keras import backend as K
 from coord import CoordinateChannel2D
