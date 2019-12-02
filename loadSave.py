@@ -10,34 +10,30 @@ import os
 import sys
 from coord import CoordinateChannel2D
 
-saved_model_path = sys.argv[1]
-optimize_lite_model = True  #@param {type:"boolean"}
-full_integer_quantization = False #@param {type: "boolean"}
-
-num_calibration_examples = 10 
-representative_dataset = None
-lite_model_file = "./lite_model.tflite"
+sys.path.append('layers')
+sys.path.append('utils')
+sys.path.append('networks')
 
 from tensorflow_model_optimization.sparsity import keras as sparsity
 from coord import CoordinateChannel2D
 
-pruning = 0
-# if pruning:
 
-#   with sparsity.prune_scope():
-#     pruned_model = tf.keras.models.load_model(saved_model_path, custom_objects = {'CoordinateChannel2D' : CoordinateChannel2D})
+saved_model_path = sys.argv[1]
+optimize_lite_model = True
+full_integer_quantization = False
 
-#   converter = tf.lite.TFLiteConverter.from_keras_model(pruned_model)
-# else:
+# num_calibration_examples = 10 
+# representative_dataset = None
+lite_model_file = "./lite_model.tflite"
+
 converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
-
 converter.target_ops = [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
 
 
 if optimize_lite_model:
   converter.optimizations = [tf.lite.Optimize.DEFAULT]
-  if representative_dataset:  # This is optional, see above.
-    converter.representative_dataset = representative_dataset
+  # if representative_dataset:
+  #   converter.representative_dataset = representative_dataset
   if full_integer_quantization:
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = tf.uint8
@@ -47,5 +43,4 @@ lite_model_content = converter.convert()
 
 with open(lite_model_file, "wb") as f:
   f.write(lite_model_content)
-print("Wrote %sTFLite model of %d bytes." %
-      ("optimized " if optimize_lite_model else "", len(lite_model_content)))
+print("Wrote %sTFLite model of %d bytes." % ("optimized " if optimize_lite_model else "", len(lite_model_content)))

@@ -26,7 +26,7 @@ def get_image(index, data, target_size, dataset_directory, normalize = True, tra
                     import pdb;pdb.set_trace()
                 labels = labels.reshape((8))
             else:
-                labels = labels/223
+
                 labels = labels.reshape(8)
                 delta = np.zeros(8)
                 delta[labels>1] = labels[labels>1] - 1
